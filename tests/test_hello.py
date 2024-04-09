@@ -1,4 +1,4 @@
-from src.hello import greetings
+from bsv.hello import greetings
 
 
 def test_greetings():

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('src/__init__.py', 'r') as f:
+with open('bsv/__init__.py', 'r') as f:
     for line in f:
         if line.startswith('__version__'):
             version = line.strip().split('=')[1].strip(' ').strip("'")
