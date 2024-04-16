@@ -38,11 +38,11 @@ Thank you for considering contributing in the BSV Blockchain ecosystem! This doc
 
 1. **Fork the Repository**: Click on the "Fork" button at the top-right corner of this repository.
   
-2. **Clone the Forked Repository**: `git clone https://github.com/YOUR_USERNAME/PROJECT.git`
+2. **Clone the Forked Repository**: `git clone https://github.com/YOUR_USERNAME/py-sdk.git`
 
-3. **Navigate to the Directory**: `cd bsv-sdk`
+3. **Navigate to the Directory**: `cd py-sdk`
 
-4. **Install Dependencies**: Always run `npm install` after pulling to ensure tooling is up to date.
+4. **Install Dependencies**: Always run `pip install -r requirements.txt` after pulling to ensure tooling is up to date.
 
 ## Pull Request Process
 
@@ -50,10 +50,10 @@ Thank you for considering contributing in the BSV Blockchain ecosystem! This doc
   
 2. **Commit Your Changes**: Make your changes and commit them. Commit messages should be clear and concise to explain what was done.
   
-3. **Run Tests**: Ensure all tests pass using Jest: `npm test`.
+3. **Run Tests**: Ensure all tests pass using Jest: `pytest`.
   
-4. **Documentation**: All code must be fully annotated with comments. Update the documentation by running `npm run doc` before creating a pull request.
-  
+4. **Documentation**: All code must be fully annotated with comments.
+
 5. **Push to Your Fork**: `git push origin your-new-branch`.
   
 6. **Open a Pull Request**: Go to your fork on GitHub and click "New Pull Request". Fill out the PR template, explaining your changes.
@@ -64,9 +64,7 @@ Thank you for considering contributing in the BSV Blockchain ecosystem! This doc
 
 ## Coding Conventions
 
-> ADAPT TO YOUR PROJECT
-
-- **Code Style**: We use `ts-standard` for our TypeScript coding style. Run `npm run lint` to ensure your code adheres to this style.
+- **Code Style**: We use [PEP 8](https://peps.python.org/pep-0008/) for our Python coding style.
 
 - **Testing**: Always include tests for new code or changes. We aim for industry-standard levels of test coverage.
   
@@ -74,7 +72,7 @@ Thank you for considering contributing in the BSV Blockchain ecosystem! This doc
 
 ## Documentation and Testing
 
-- **Documentation**: Update the documentation whenever you add or modify the code. Run `npm run doc` to generate the latest docs.
+- **Documentation**: Update the documentation whenever you add or modify the code.
   
 - **Testing**: We use Jest for all tests. Write comprehensive tests, ensuring edge cases are covered. All PRs should maintain or improve the current test coverage.
 

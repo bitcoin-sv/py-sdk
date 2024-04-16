@@ -1,12 +1,10 @@
-# BSV TEMPLATE
+# BSV SDK
 
 [![build](https://github.com/bitcoin-sv/py-sdk/actions/workflows/build.yml/badge.svg)](https://github.com/bitcoin-sv/py-sdk/actions/workflows/build.yml)
 [![PyPI version](https://img.shields.io/pypi/v/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 [![Python versions](https://img.shields.io/pypi/pyversions/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 
-BSV BLOCKCHAIN | Template repository for open-source projects
-
-Update this README with information about the project.
+Welcome to the BSV Blockchain Libraries Project, the comprehensive Python SDK designed to provide an updated and unified layer for developing scalable applications on the BSV Blockchain. This SDK addresses the limitations of previous tools by offering a fresh, peer-to-peer approach, adhering to SPV, and ensuring privacy and scalability.
 
 ## Table of Contents
 
@@ -19,23 +17,20 @@ Update this README with information about the project.
 
 ## Objective
 
-Toe objective of this project is to make it easier to create new open-source projects within Bitcoin SV.
+The BSV Blockchain Libraries Project aims to structure and maintain a middleware layer of the BSV Blockchain technology stack. By facilitating the development and maintenance of core libraries, it serves as an essential toolkit for developers looking to build on the BSV Blockchain.
 
 ## Getting Started
 
-### Fork the repo
-
-To create a project from this template:
+### Installation
 
 ```bash
-git clone https://github.com/bitcoin-sv/template
+pip install bsv-sdk
 ```
 
 ### Basic Usage
 
-
-```typescript
-// TODO: Code Example Will Go Here
+```python
+# TODO: Code Example Will Go Here
 ```
 
 For a more detailed tutorial and advanced examples, check our [Documentation](#documentation).
@@ -57,9 +52,9 @@ Provide detailed information and links to the various places the project is docu
 We're always looking for contributors to help us improve the project. Whether it's bug reports, feature requests, or pull requests - all contributions are welcome.
 
 1. **Fork & Clone**: Fork this repository and clone it to your local machine.
-2. **Set Up**: Run `npm install` to install all dependencies.
+2. **Set Up**: Run `pip install -r requirements.txt` to install all dependencies.
 3. **Make Changes**: Create a new branch and make your changes.
-4. **Test**: Ensure all tests pass by running `npm test`.
+4. **Test**: Ensure all tests pass by running `pytest`.
 5. **Commit**: Commit your changes and push to your fork.
 6. **Pull Request**: Open a pull request from your fork to this repository.
 
