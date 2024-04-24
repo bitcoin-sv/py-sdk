@@ -54,7 +54,7 @@ We're always looking for contributors to help us improve the project. Whether it
 1. **Fork & Clone**: Fork this repository and clone it to your local machine.
 2. **Set Up**: Run `pip install -r requirements.txt` to install all dependencies.
 3. **Make Changes**: Create a new branch and make your changes.
-4. **Test**: Ensure all tests pass by running `pytest`.
+4. **Test**: Ensure all tests pass by running `pytest --cov=bsv --cov-report=html`.
 5. **Commit**: Commit your changes and push to your fork.
 6. **Pull Request**: Open a pull request from your fork to this repository.
 

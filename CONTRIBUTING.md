@@ -50,7 +50,7 @@ Thank you for considering contributing in the BSV Blockchain ecosystem! This doc
   
 2. **Commit Your Changes**: Make your changes and commit them. Commit messages should be clear and concise to explain what was done.
   
-3. **Run Tests**: Ensure all tests pass using Jest: `pytest`.
+3. **Run Tests**: Ensure all tests pass using Jest: `pytest --cov=bsv --cov-report=html`.
   
 4. **Documentation**: All code must be fully annotated with comments.
 
