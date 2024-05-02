@@ -10,7 +10,8 @@ from .aes import aes_encrypt_with_iv
 from .base58 import base58check_encode
 from .constants import Network, NETWORK_ADDRESS_PREFIX_DICT, NETWORK_WIF_PREFIX_DICT, PUBLIC_KEY_COMPRESSED_PREFIX_LIST
 from .curve import Point
-from .hash import hash160, hash256
+from .curve import curve, multiply as curve_multiply, add as curve_add
+from .hash import hash160, hash256, hmac_sha256
 from .utils import decode_wif, text_digest, stringify_ecdsa_recoverable, unstringify_ecdsa_recoverable
 from .utils import deserialize_ecdsa_recoverable, serialize_ecdsa_der
 
@@ -110,6 +111,19 @@ class PublicKey:
         """
         message: bytes = text.encode('utf-8')
         return b64encode(self.encrypt(message)).decode('ascii')
+
+    def derive_child(self, private_key: 'PrivateKey', invoice_number: str) -> 'PublicKey':
+        """
+        derive a child key with BRC-42
+        :param private_key: the private key of the other party
+        :param invoice_number: the invoice number used to derive the child key
+        :return: the derived child key
+        """
+        shared_key = self.ecdh_key(private_key)
+        hashing = hmac_sha256(shared_key, invoice_number.encode('utf-8'))
+        point = curve_multiply(int.from_bytes(hashing, 'big'), curve.g)
+        final_point = curve_add(self.point(), point)
+        return PublicKey(final_point)
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, PublicKey):
@@ -259,6 +273,17 @@ class PrivateKey:
         :returns: BIE1 encrypted text, base64 encoded
         """
         return self.public_key().encrypt_text(text)
+
+    def derive_child(self, public_key: PublicKey, invoice_number: str) -> 'PrivateKey':
+        """
+        derive a child key with BRC-42
+        :param public_key: the public key of the other party
+        :param invoice_number: the invoice number used to derive the child key
+        :return: the derived child key
+        """
+        shared_key = self.ecdh_key(public_key)
+        hashing = hmac_sha256(shared_key, invoice_number.encode('utf-8'))
+        return PrivateKey((self.int() + int.from_bytes(hashing, 'big')) % curve.n)
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, PrivateKey):
