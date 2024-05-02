@@ -180,8 +180,8 @@ def test_encryption():
     plain = 'hello world'
     encrypted = ('QklFMQPkjNG3xxnfRv7oUDjUYPH2VN3VFrcglCcwmeYpJpsjRKnfl/XsS+dOg'
                  'ocRV6JKVHkfUZAKIHDo7vwxjv/BPkV5EA2Dl4RJ6d/jpWwgGdFBYA==')
-    assert private_key.decrypt_text(encrypted) == plain
-    assert private_key.decrypt_text(public_key.encrypt_text(plain)) == plain
+    assert private_key.decrypt_text_ecies(encrypted) == plain
+    assert private_key.decrypt_text_ecies(public_key.encrypt_text_ecies(plain)) == plain
 
 
 def test_brc42():

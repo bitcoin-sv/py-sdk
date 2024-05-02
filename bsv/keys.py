@@ -84,7 +84,7 @@ class PublicKey:
     def ecdh_key(self, key: 'PrivateKey') -> bytes:
         return PublicKey(self.key.multiply(key.serialize())).serialize()
 
-    def encrypt(self, message: bytes) -> bytes:
+    def encrypt_ecies(self, message: bytes) -> bytes:
         """
         Electrum ECIES (aka BIE1) encryption
         """
@@ -105,12 +105,12 @@ class PublicKey:
         # give out encrypted + mac
         return encrypted + mac
 
-    def encrypt_text(self, text: str) -> str:
+    def encrypt_text_ecies(self, text: str) -> str:
         """
         :returns: BIE1 encrypted text, base64 encoded
         """
         message: bytes = text.encode('utf-8')
-        return b64encode(self.encrypt(message)).decode('ascii')
+        return b64encode(self.encrypt_ecies(message)).decode('ascii')
 
     def derive_child(self, private_key: 'PrivateKey', invoice_number: str) -> 'PublicKey':
         """
@@ -236,7 +236,7 @@ class PrivateKey:
     def ecdh_key(self, key: PublicKey) -> bytes:
         return PublicKey(key.key.multiply(self.serialize())).serialize()
 
-    def decrypt(self, message: bytes) -> bytes:
+    def decrypt_ecies(self, message: bytes) -> bytes:
         """
         Electrum ECIES (aka BIE1) decryption
         """
@@ -255,24 +255,24 @@ class PrivateKey:
         # make the AES decryption
         return aes_decrypt_with_iv(key_e, iv, cipher)
 
-    def decrypt_text(self, text: str) -> str:
+    def decrypt_text_ecies(self, text: str) -> str:
         """
         decrypt BIE1 encrypted, base64 encoded text
         """
         message: bytes = b64decode(text)
-        return self.decrypt(message).decode('utf-8')
+        return self.decrypt_ecies(message).decode('utf-8')
 
-    def encrypt(self, message: bytes) -> bytes:  # pragma: no cover
+    def encrypt_ecies(self, message: bytes) -> bytes:  # pragma: no cover
         """
         Electrum ECIES (aka BIE1) encryption
         """
-        return self.public_key().encrypt(message)
+        return self.public_key().encrypt_ecies(message)
 
-    def encrypt_text(self, text: str) -> str:  # pragma: no cover
+    def encrypt_text_ecies(self, text: str) -> str:  # pragma: no cover
         """
         :returns: BIE1 encrypted text, base64 encoded
         """
-        return self.public_key().encrypt_text(text)
+        return self.public_key().encrypt_text_ecies(text)
 
     def derive_child(self, public_key: PublicKey, invoice_number: str) -> 'PrivateKey':
         """
