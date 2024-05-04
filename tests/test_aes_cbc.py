@@ -2,7 +2,8 @@ from secrets import randbits
 
 import pytest
 
-from bsv.aes import append_pkcs7_padding, strip_pkcs7_padding, aes_encrypt_with_iv, aes_decrypt_with_iv, InvalidPadding
+from bsv.aes_cbc import InvalidPadding
+from bsv.aes_cbc import append_pkcs7_padding, strip_pkcs7_padding, aes_encrypt_with_iv, aes_decrypt_with_iv
 
 
 def test():

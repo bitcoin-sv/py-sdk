@@ -2,6 +2,7 @@ import math
 import re
 from base64 import b64encode, b64decode
 from contextlib import suppress
+from secrets import randbits
 from typing import Tuple, Optional, Union
 
 from typing_extensions import Literal
@@ -207,3 +208,10 @@ def bits_to_bytes(bits: str) -> bytes:
     """
     byte_length = math.ceil(len(bits) / 8) or 1
     return int(bits, 2).to_bytes(byte_length, byteorder='big')
+
+
+def randbytes(length: int) -> bytes:
+    """
+    generate cryptographically secure random bytes
+    """
+    return randbits(length * 8).to_bytes(length, 'big')
