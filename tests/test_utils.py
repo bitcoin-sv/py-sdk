@@ -1,10 +1,11 @@
 import pytest
 
 from bsv.base58 import base58check_encode, b58_encode
-from bsv.constants import Network
+from bsv.constants import Network, OpCode
 from bsv.curve import curve
 from bsv.utils import bytes_to_bits, bits_to_bytes
 from bsv.utils import decode_address, address_to_public_key_hash, decode_wif, validate_address
+from bsv.utils import get_pushdata_code, encode_pushdata, encode_int
 from bsv.utils import serialize_ecdsa_recoverable, deserialize_ecdsa_recoverable
 from bsv.utils import stringify_ecdsa_recoverable, unstringify_ecdsa_recoverable
 from bsv.utils import text_digest
@@ -154,3 +155,66 @@ def test_bits():
     assert bits_to_bytes('100010101010111') == b'\x45\x57'
     assert bits_to_bytes('000000000000001') == b'\x00\x01'
     assert bits_to_bytes('0000000000000001') == b'\x00\x01'
+
+
+def test_get_pushdata_code():
+    assert get_pushdata_code(0x4b) == b'\x4b'
+    assert get_pushdata_code(0x4c) == bytes.fromhex('4c4c')
+    assert get_pushdata_code(0xff) == bytes.fromhex('4cff')
+    assert get_pushdata_code(0x0100) == bytes.fromhex('4d0001')
+    assert get_pushdata_code(0xffff) == bytes.fromhex('4dffff')
+    assert get_pushdata_code(0x010000) == bytes.fromhex('4e00000100')
+    assert get_pushdata_code(0x01020304) == bytes.fromhex('4e04030201')
+
+    with pytest.raises(ValueError, match=r'data too long to encode in a PUSHDATA opcode'):
+        get_pushdata_code(0x0100000000)
+
+
+def test_encode_pushdata():
+    # minimal push
+    assert encode_pushdata(b'') == OpCode.OP_0
+    assert encode_pushdata(b'\x00') == b'\x01\x00'
+    assert encode_pushdata(b'\x01') == OpCode.OP_1
+    assert encode_pushdata(b'\x02') == OpCode.OP_2
+    assert encode_pushdata(b'\x10') == OpCode.OP_16
+    assert encode_pushdata(b'\x11') == b'\x01\x11'
+    assert encode_pushdata(b'\x81') == OpCode.OP_1NEGATE
+    # non-minimal push
+    with pytest.raises(AssertionError, match=r'empty pushdata'):
+        encode_pushdata(b'', False)
+    assert encode_pushdata(b'\x00', False) == b'\x01\x00'
+    assert encode_pushdata(b'\x01', False) == b'\x01\x01'
+    assert encode_pushdata(b'\x02', False) == b'\x01\x02'
+    assert encode_pushdata(b'\x10', False) == b'\x01\x10'
+    assert encode_pushdata(b'\x11', False) == b'\x01\x11'
+    assert encode_pushdata(b'\x81', False) == b'\x01\x81'
+
+
+def test_encode_int():
+    assert encode_int(-2147483648) == bytes.fromhex('05 00 00 00 80 80')
+    assert encode_int(-2147483647) == bytes.fromhex('04 FF FF FF FF')
+    assert encode_int(-8388608) == bytes.fromhex('04 00 00 80 80')
+    assert encode_int(-8388607) == bytes.fromhex('03 FF FF FF')
+    assert encode_int(-32768) == bytes.fromhex('03 00 80 80')
+    assert encode_int(-32767) == bytes.fromhex('02 FF FF')
+    assert encode_int(-128) == bytes.fromhex('02 80 80')
+    assert encode_int(-127) == bytes.fromhex('01 FF')
+    assert encode_int(-17) == bytes.fromhex('01 91')
+    assert encode_int(-16) == bytes.fromhex('01 90')
+    assert encode_int(-2) == bytes.fromhex('01 82')
+    assert encode_int(-1) == OpCode.OP_1NEGATE
+
+    assert encode_int(0) == OpCode.OP_0
+
+    assert encode_int(1) == OpCode.OP_1
+    assert encode_int(2) == OpCode.OP_2
+    assert encode_int(16) == OpCode.OP_16
+    assert encode_int(17) == bytes.fromhex('01 11')
+    assert encode_int(127) == bytes.fromhex('01 7F')
+    assert encode_int(128) == bytes.fromhex('02 80 00')
+    assert encode_int(32767) == bytes.fromhex('02 FF 7F')
+    assert encode_int(32768) == bytes.fromhex('03 00 80 00')
+    assert encode_int(8388607) == bytes.fromhex('03 FF FF 7F')
+    assert encode_int(8388608) == bytes.fromhex('04 00 00 80 00')
+    assert encode_int(2147483647) == bytes.fromhex('04 FF FF FF 7F')
+    assert encode_int(2147483648) == bytes.fromhex('05 00 00 00 80 00')

@@ -8,6 +8,7 @@ from bsv.curve import Point
 from bsv.hash import sha256
 from bsv.keys import PrivateKey, PublicKey, verify_signed_text
 from bsv.utils import text_digest, unstringify_ecdsa_recoverable
+from .test_transaction import digest1, digest2, digest3
 
 private_key_hex = 'f97c89aaacf0cd2e47ddbacc97dae1f88bec49106ac37716c451dcdd008a4b62'
 private_key_bytes = bytes.fromhex(private_key_hex)
@@ -98,43 +99,6 @@ def test_private_key():
 
 
 def test_verify():
-    digest1 = bytes.fromhex(
-        '01000000'
-        'ae4b0ed7fb33ec9d5c567520f8cf5f688207f28d5c2f2225c5fe62f7f17c0a25'
-        '3bb13029ce7b1f559ef5e747fcac439f1455a2ec7c5f09b72290795e70665044'
-        '48dd1f8e77b4a6a75e9b0d0908b25f56b8c98ce37d1fb5ada534d49d0957bcd201000000'
-        '1976a9146a176cd51593e00542b8e1958b7da2be97452d0588ac'
-        'e803000000000000'
-        'ffffffff'
-        '048129b26f1d89828c88cdcd472f8f20927822ab7a3d6532cb921c4019f51301'
-        '00000000'
-        '41000000'
-    )
-    digest2 = bytes.fromhex(
-        '01000000'
-        'ee2851915c957b7187967dabb54f32c00964c689285d3b73e7b2b92e30723c88'
-        '752adad0a7b9ceca853768aebb6965eca126a62965f698a0c1bc43d83db632ad'
-        '48dd1f8e77b4a6a75e9b0d0908b25f56b8c98ce37d1fb5ada534d49d0957bcd202000000'
-        '1976a9146a176cd51593e00542b8e1958b7da2be97452d0588ace'
-        '803000000000000'
-        'ffffffff'
-        'd67a44dde8ee744b7d73b50a3b3a887cb3321d6e16025273f760046c35a265fd'
-        '00000000'
-        '41000000'
-    )
-    digest3 = bytes.fromhex(
-        '01000000'
-        'ee2851915c957b7187967dabb54f32c00964c689285d3b73e7b2b92e30723c88'
-        '752adad0a7b9ceca853768aebb6965eca126a62965f698a0c1bc43d83db632ad'
-        'e4c1a33b3a7ca18ef1d6030c6ec222902195f186cb864e09bc1db08b3ea5c1fc00000000'
-        '1976a9146a176cd51593e00542b8e1958b7da2be97452d0588ace'
-        '803000000000000'
-        'ffffffff'
-        'd67a44dde8ee744b7d73b50a3b3a887cb3321d6e16025273f760046c35a265fd'
-        '00000000'
-        '41000000'
-    )
-
     # https://whatsonchain.com/tx/4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb
     der: bytes = bytes.fromhex('304402207e2c6eb8c4b20e251a71c580373a2836e209c50726e5f8b0f4f59f8af00eee1a'
                                '022019ae1690e2eb4455add6ca5b86695d65d3261d914bc1d7abb40b188c7f46c9a5')

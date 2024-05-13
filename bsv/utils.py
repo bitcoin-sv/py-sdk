@@ -9,6 +9,7 @@ from typing_extensions import Literal
 
 from .base58 import base58check_decode
 from .constants import Network, ADDRESS_PREFIX_NETWORK_DICT, WIF_PREFIX_NETWORK_DICT, NUMBER_BYTE_LENGTH
+from .constants import OpCode
 from .curve import curve
 
 
@@ -215,3 +216,56 @@ def randbytes(length: int) -> bytes:
     generate cryptographically secure random bytes
     """
     return randbits(length * 8).to_bytes(length, 'big')
+
+
+def get_pushdata_code(byte_length: int) -> bytes:
+    """
+    :returns: the corresponding PUSHDATA opcode according to the byte length of pushdata
+    """
+    if byte_length <= 0x4b:
+        return byte_length.to_bytes(1, 'little')
+    elif byte_length <= 0xff:
+        # OP_PUSHDATA1
+        return OpCode.OP_PUSHDATA1 + byte_length.to_bytes(1, 'little')
+    elif byte_length <= 0xffff:
+        # OP_PUSHDATA2
+        return OpCode.OP_PUSHDATA2 + byte_length.to_bytes(2, 'little')
+    elif byte_length <= 0xffffffff:
+        # OP_PUSHDATA4
+        return OpCode.OP_PUSHDATA4 + byte_length.to_bytes(4, 'little')
+    else:
+        raise ValueError("data too long to encode in a PUSHDATA opcode")
+
+
+def encode_pushdata(pushdata: bytes, minimal_push: bool = True) -> bytes:
+    """encode pushdata with proper opcode
+    https://github.com/bitcoin-sv/bitcoin-sv/blob/v1.0.10/src/script/interpreter.cpp#L310-L337
+    :param pushdata: bytes you want to push onto the stack in bitcoin script
+    :param minimal_push: if True then push data following the minimal push rule
+    """
+    if minimal_push:
+        if pushdata == b'':
+            return OpCode.OP_0
+        if len(pushdata) == 1 and 1 <= pushdata[0] <= 16:
+            return bytes([OpCode.OP_1[0] + pushdata[0] - 1])
+        if len(pushdata) == 1 and pushdata[0] == 0x81:
+            return OpCode.OP_1NEGATE
+    else:
+        # non-minimal push requires pushdata != b''
+        assert pushdata, 'empty pushdata'
+    return get_pushdata_code(len(pushdata)) + pushdata
+
+
+def encode_int(num: int) -> bytes:
+    """
+    encode a signed integer you want to push onto the stack in bitcoin script, following the minimal push rule
+    """
+    if num == 0:
+        return OpCode.OP_0
+    negative: bool = num < 0
+    octets: bytearray = bytearray(unsigned_to_bytes(-num if negative else num, 'little'))
+    if octets[-1] & 0x80:
+        octets += b'\x00'
+    if negative:
+        octets[-1] |= 0x80
+    return encode_pushdata(octets)
