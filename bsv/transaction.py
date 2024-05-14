@@ -1,9 +1,7 @@
 import math
 from contextlib import suppress
 from io import BytesIO
-from typing import List, Optional, Union, Dict, Any
-
-from typing_extensions import Literal
+from typing import List, Optional, Union, Dict, Any, Literal
 
 from .constants import SIGHASH, Network
 from .constants import TRANSACTION_VERSION, TRANSACTION_LOCKTIME, TRANSACTION_SEQUENCE, TRANSACTION_FEE_RATE

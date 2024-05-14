@@ -3,9 +3,7 @@ import re
 from base64 import b64encode, b64decode
 from contextlib import suppress
 from secrets import randbits
-from typing import Tuple, Optional, Union
-
-from typing_extensions import Literal
+from typing import Tuple, Optional, Union, Literal
 
 from .base58 import base58check_decode
 from .constants import Network, ADDRESS_PREFIX_NETWORK_DICT, WIF_PREFIX_NETWORK_DICT, NUMBER_BYTE_LENGTH
