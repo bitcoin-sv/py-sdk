@@ -193,6 +193,7 @@ class BareMultisig(ScriptType):
 
     @classmethod
     def estimated_unlocking_byte_length(cls, **kwargs) -> int:  # pragma: no cover
-        if not kwargs.get('private_keys'):
-            raise ValueError(f"can't estimate unlocking byte length without private keys")
-        return 1 + 73 * len(kwargs.get('private_keys'))
+        if not kwargs.get('threshold') and not kwargs.get('private_keys'):
+            raise ValueError(f"can't estimate unlocking byte length without threshold value")
+        threshold = kwargs.get('threshold') if kwargs.get('threshold') else len(kwargs.get('private_keys'))
+        return 1 + 73 * threshold
