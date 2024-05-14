@@ -12,10 +12,7 @@ BroadcastResult = namedtuple('BroadcastResult', 'propagated data')
 
 class Provider(metaclass=ABCMeta):
 
-    def __init__(self,
-                 network: Network = Network.MAINNET,
-                 headers: Optional[Dict] = None,
-                 timeout: Optional[int] = None):
+    def __init__(self, network: Network = Network.MAINNET, headers: Optional[Dict] = None, timeout: Optional[int] = None):
         self.network: Network = network
         self.headers: Dict = headers or {'Content-Type': 'application/json', 'Accept': 'application/json', }
         self.timeout: int = timeout or HTTP_REQUEST_TIMEOUT

@@ -6,7 +6,7 @@ from bsv.keys import PrivateKey
 from bsv.script.script import Script
 from bsv.script.type import P2PKH, P2PK
 from bsv.service.service import WhatsOnChain
-from bsv.transaction import TxInput, TxOutput, Transaction, TransactionBytesIO
+from bsv.transaction import TxInput, TxOutput, Transaction, TxBytesIO
 from bsv.unspent import Unspent
 from bsv.utils import encode_pushdata
 
@@ -117,7 +117,7 @@ def test_transaction():
 
 
 def test_transaction_bytes_io():
-    io = TransactionBytesIO(bytes.fromhex('0011223344556677889912fd1234fe12345678ff1234567890abcdef00112233'))
+    io = TxBytesIO(bytes.fromhex('0011223344556677889912fd1234fe12345678ff1234567890abcdef00112233'))
 
     assert io.read_bytes(4) == bytes.fromhex('00112233')
     assert io.read_int(1) == int.from_bytes(bytes.fromhex('44'), 'little')

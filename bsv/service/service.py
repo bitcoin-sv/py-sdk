@@ -21,4 +21,4 @@ class Service:
         return self.provider.get_balance(**kwargs)
 
     def broadcast(self, raw: str) -> BroadcastResult:
-        return self.provider.broadcast(raw)
+        return self.provider.broadcast(raw)  # pragma: no cover

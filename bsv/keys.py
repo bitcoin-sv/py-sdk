@@ -72,8 +72,7 @@ class PublicKey:
         """
         return self.key.verify(signature, message, hasher)
 
-    def verify_recoverable(self, signature: bytes, message: bytes,
-                           hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
+    def verify_recoverable(self, signature: bytes, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
         """
         verify serialized recoverable ECDSA signature in format "r (32 bytes) + s (32 bytes) + recovery_id (1 byte)"
         """
@@ -139,8 +138,7 @@ class PublicKey:
 
 class PrivateKey:
 
-    def __init__(self, private_key: Union[str, int, bytes, CcPrivateKey, None] = None,
-                 network: Optional[Network] = None):
+    def __init__(self, private_key: Union[str, int, bytes, CcPrivateKey, None] = None, network: Optional[Network] = None):
         """
         create private key from WIF (str), or int, or bytes, or CoinCurve private key
         random a new private key if None
@@ -219,8 +217,7 @@ class PrivateKey:
         """
         return self.key.sign_recoverable(message, hasher)
 
-    def verify_recoverable(self, signature: bytes, message: bytes,
-                           hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
+    def verify_recoverable(self, signature: bytes, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
         """
         verify serialized recoverable ECDSA signature in format "r (32 bytes) + s (32 bytes) + recovery_id (1 byte)"
         """
@@ -312,10 +309,7 @@ class PrivateKey:
         return PrivateKey(CcPrivateKey.from_pem(b))
 
 
-def verify_signed_text(text: str,
-                       address: str,
-                       signature: str,
-                       hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
+def verify_signed_text(text: str, address: str, signature: str, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
     """
     verify signed arbitrary text
     """
@@ -327,9 +321,7 @@ def verify_signed_text(text: str,
     return public_key.verify(der, message, hasher) and public_key.address(compressed=compressed) == address
 
 
-def recover_public_key(signature: bytes,
-                       message: bytes,
-                       hasher: Optional[Callable[[bytes], bytes]] = hash256) -> PublicKey:
+def recover_public_key(signature: bytes, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> PublicKey:
     """
     recover public key from serialized recoverable ECDSA signature in format
       "r (32 bytes) + s (32 bytes) + recovery_id (1 byte)"

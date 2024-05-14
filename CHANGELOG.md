@@ -1,6 +1,8 @@
 # CHANGELOG
 
-All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project will be documented in this file. The format is based
+on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
+to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Table of Contents
 
@@ -10,21 +12,27 @@ All notable changes to this project will be documented in this file. The format 
 ## [Unreleased]
 
 ### Added
+
 - (Include new features or significant user-visible enhancements here.)
 
 ### Changed
+
 - (Detail modifications that are non-breaking but relevant to the end-users.)
 
 ### Deprecated
+
 - (List features that are in the process of being phased out or replaced.)
 
 ### Removed
+
 - (Indicate features or capabilities that were taken out of the project.)
 
 ### Fixed
+
 - (Document bugs that were fixed since the last release.)
 
 ### Security
+
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
 
 ---
@@ -32,6 +40,7 @@ All notable changes to this project will be documented in this file. The format 
 ## [1.0.0] - YYYY-MM-DD
 
 ### Added
+
 - Initial release
 
 ---
@@ -62,4 +71,5 @@ Replace `X.X.X` with the new version number and `YYYY-MM-DD` with the release da
 - 
 ```
 
-Use this template as the starting point for each new version. Always update the "Unreleased" section with changes as they're implemented, and then move them under the new version header when that version is released.
+Use this template as the starting point for each new version. Always update the "Unreleased" section with changes as they're implemented,
+and then move them under the new version header when that version is released.

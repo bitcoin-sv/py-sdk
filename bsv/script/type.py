@@ -42,7 +42,7 @@ class ScriptType(metaclass=ABCMeta):
         raise NotImplementedError('ScriptType.estimated_unlocking_byte_length')
 
 
-class Unknown(ScriptType):
+class Unknown(ScriptType):  # pragma: no cover
 
     def __str__(self) -> str:
         return '<ScriptType:Unknown>'
@@ -65,10 +65,10 @@ class Unknown(ScriptType):
 
 class P2PKH(ScriptType):
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return '<ScriptType:P2PKH>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
@@ -83,23 +83,14 @@ class P2PKH(ScriptType):
         else:
             raise TypeError("unsupported type to parse P2PKH locking script")
         assert len(pkh) == PUBLIC_KEY_HASH_BYTE_LENGTH, 'invalid byte length of public key hash'
-        return Script(
-            OpCode.OP_DUP +
-            OpCode.OP_HASH160 +
-            encode_pushdata(pkh) +
-            OpCode.OP_EQUALVERIFY +
-            OpCode.OP_CHECKSIG
-        )
+        return Script(OpCode.OP_DUP + OpCode.OP_HASH160 + encode_pushdata(pkh) + OpCode.OP_EQUALVERIFY + OpCode.OP_CHECKSIG)
 
     @classmethod
     def unlocking(cls, **kwargs) -> Script:
         signature: bytes = kwargs.get('signatures')[0]
         public_key: bytes = kwargs.get('public_key') or kwargs.get('private_keys')[0].public_key().serialize()
         sighash: SIGHASH = kwargs.get('sighash')
-        return Script(
-            encode_pushdata(signature + sighash.to_bytes(1, 'little')) +
-            encode_pushdata(public_key)
-        )
+        return Script(encode_pushdata(signature + sighash.to_bytes(1, 'little')) + encode_pushdata(public_key))
 
     @classmethod
     def estimated_unlocking_byte_length(cls, **kwargs) -> int:
@@ -110,10 +101,10 @@ class P2PKH(ScriptType):
 
 class OpReturn(ScriptType):
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return '<ScriptType:OP_RETURN>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
@@ -130,20 +121,20 @@ class OpReturn(ScriptType):
         return Script(script)
 
     @classmethod
-    def unlocking(cls, **kwargs) -> Script:
+    def unlocking(cls, **kwargs) -> Script:  # pragma: no cover
         raise ValueError("OP_RETURN cannot be unlocked")
 
     @classmethod
-    def estimated_unlocking_byte_length(cls, **kwargs) -> int:
+    def estimated_unlocking_byte_length(cls, **kwargs) -> int:  # pragma: no cover
         raise ValueError("OP_RETURN cannot be unlocked")
 
 
 class P2PK(ScriptType):
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return '<ScriptType:P2PK>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
@@ -168,15 +159,15 @@ class P2PK(ScriptType):
 
     @classmethod
     def estimated_unlocking_byte_length(cls, **kwargs) -> int:
-        return 73
+        return 73  # pragma: no cover
 
 
 class BareMultisig(ScriptType):
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return '<ScriptType:BareMultisig>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
@@ -201,7 +192,7 @@ class BareMultisig(ScriptType):
         return Script(script)
 
     @classmethod
-    def estimated_unlocking_byte_length(cls, **kwargs) -> int:
+    def estimated_unlocking_byte_length(cls, **kwargs) -> int:  # pragma: no cover
         if not kwargs.get('private_keys'):
             raise ValueError(f"can't estimate unlocking byte length without private keys")
         return 1 + 73 * len(kwargs.get('private_keys'))

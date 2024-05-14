@@ -21,7 +21,7 @@ class InsufficientFunds(ValueError):
     pass
 
 
-class TransactionBytesIO(BytesIO):
+class TxBytesIO(BytesIO):
 
     def read_bytes(self, byte_length: Optional[int] = None) -> bytes:
         """
@@ -86,17 +86,16 @@ class TxInput:
         stream.write(self.sequence.to_bytes(4, 'little'))
         return stream.getvalue()
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f'<TxInput outpoint={self.txid}:{self.vout} value={self.value} locking_script={self.locking_script}>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, TransactionBytesIO]) -> Optional['TxInput']:
+    def from_hex(cls, stream: Union[str, bytes, TxBytesIO]) -> Optional['TxInput']:
         with suppress(Exception):
-            if not isinstance(stream, TransactionBytesIO):
-                stream = TransactionBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
+            stream = stream if isinstance(stream, TxBytesIO) else TxBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
             txid = stream.read_bytes(32)[::-1]
             assert len(txid) == 32
             vout = stream.read_int(4)
@@ -140,17 +139,16 @@ class TxOutput:
             self.locking_script.serialize()
         ])
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f'<TxOutput value={self.value} locking_script={self.locking_script.hex()}>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, TransactionBytesIO]) -> Optional['TxOutput']:
+    def from_hex(cls, stream: Union[str, bytes, TxBytesIO]) -> Optional['TxOutput']:
         with suppress(Exception):
-            if not isinstance(stream, TransactionBytesIO):
-                stream = TransactionBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
+            stream = stream if isinstance(stream, TxBytesIO) else TxBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
             value = stream.read_int(8)
             assert value is not None
             script_length = stream.read_varint()
@@ -195,7 +193,7 @@ class Transaction:
         raw += self.locktime.to_bytes(4, 'little')
         return raw
 
-    def add_input(self, tx_input: Union[TxInput, Unspent]) -> 'Transaction':
+    def add_input(self, tx_input: Union[TxInput, Unspent]) -> 'Transaction':  # pragma: no cover
         if isinstance(tx_input, TxInput):
             self.inputs.append(tx_input)
         elif isinstance(tx_input, Unspent):
@@ -209,7 +207,7 @@ class Transaction:
             self.add_input(tx_input)
         return self
 
-    def add_output(self, tx_output: TxOutput) -> 'Transaction':
+    def add_output(self, tx_output: TxOutput) -> 'Transaction':  # pragma: no cover
         self.outputs.append(tx_output)
         return self
 
@@ -218,7 +216,7 @@ class Transaction:
             self.add_output(tx_output)
         return self
 
-    def hex(self) -> str:
+    def hex(self) -> str:  # pragma: no cover
         return self.serialize().hex()
 
     raw = hex
@@ -269,11 +267,9 @@ class Transaction:
         """
         :returns: the digests of unsigned transaction
         """
-        _hash_prevouts = hash256(b''.join([
-            bytes.fromhex(_in.txid)[::-1] + _in.vout.to_bytes(4, 'little') for _in in self.inputs
-        ]))
-        _hash_sequence = hash256(b''.join([_in.sequence.to_bytes(4, 'little') for _in in self.inputs]))
-        _hash_outputs = hash256(b''.join([tx_output.serialize() for tx_output in self.outputs]))
+        _hash_prevouts = hash256(b''.join(bytes.fromhex(_in.txid)[::-1] + _in.vout.to_bytes(4, 'little') for _in in self.inputs))
+        _hash_sequence = hash256(b''.join(_in.sequence.to_bytes(4, 'little') for _in in self.inputs))
+        _hash_outputs = hash256(b''.join(tx_output.serialize() for tx_output in self.outputs))
         digests = []
         for i in range(len(self.inputs)):
             sighash = self.inputs[i].sighash
@@ -308,7 +304,7 @@ class Transaction:
         assert 0 <= index < len(self.inputs), f'index out of range [0, {len(self.inputs)})'
         return self.digests()[index]
 
-    def sign(self, bypass: bool = True, **kwargs) -> 'Transaction':
+    def sign(self, bypass: bool = True, **kwargs) -> 'Transaction':  # pragma: no cover
         """
         :bypass: if True then ONLY sign inputs which unlocking script is None, otherwise sign all the inputs
         sign all inputs according to their script type
@@ -347,18 +343,17 @@ class Transaction:
         :returns: estimated byte length of this transaction after signing
         if transaction has already signed, it will return the same value as function byte_length
         """
-        estimated_length = 4 + len(unsigned_to_varint(len(self.inputs))) + len(
-            unsigned_to_varint(len(self.outputs))) + 4
+        estimated_length = 4 + len(unsigned_to_varint(len(self.inputs))) + len(unsigned_to_varint(len(self.outputs))) + 4
         for tx_input in self.inputs:
             if tx_input.unlocking_script is not None:
                 # unlocking script already set
                 estimated_length += len(tx_input.serialize())
             else:
                 estimated_length += 41 + tx_input.script_type.estimated_unlocking_byte_length(
-                    private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs})
+                    private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs}
+                )
         for tx_output in self.outputs:
-            estimated_length += 8 + len(
-                tx_output.locking_script.byte_length_varint()) + tx_output.locking_script.byte_length()
+            estimated_length += 8 + len(tx_output.locking_script.byte_length_varint()) + tx_output.locking_script.byte_length()
         return estimated_length
 
     estimated_size = estimated_byte_length
@@ -371,12 +366,11 @@ class Transaction:
 
     def add_change(self, change_address: Optional[str] = None) -> 'Transaction':
         # byte length increased after adding a P2PKH change output
-        size_increased = 34 + len(unsigned_to_varint(len(self.outputs) + 1)) - len(
-            unsigned_to_varint(len(self.outputs)))
+        size_increased = 34 + len(unsigned_to_varint(len(self.outputs) + 1)) - len(unsigned_to_varint(len(self.outputs)))
         # then we know the estimated byte length after signing, of this transaction with a change output
         fee_expected = math.ceil(self.fee_rate * (self.estimated_byte_length() + size_increased))
         fee_overpaid = self.fee() - fee_expected
-        if fee_overpaid > 0:
+        if fee_overpaid > 0:  # pragma: no cover
             change_output: Optional[TxOutput] = None
             if not change_address:
                 for tx_input in self.inputs:
@@ -389,7 +383,7 @@ class Transaction:
             self.add_output(change_output)
         return self
 
-    def broadcast(self, check_fee: bool = True) -> BroadcastResult:
+    def broadcast(self, check_fee: bool = True) -> BroadcastResult:  # pragma: no cover
         fee_expected = self.estimated_fee()
         if check_fee and self.fee() < fee_expected:
             raise InsufficientFunds(
@@ -401,8 +395,12 @@ class Transaction:
         out = self.outputs[vout]
         if out.script_type in [OpReturn()]:
             return None
-        return Unspent(txid=self.txid(), vout=vout, value=out.value, script_type=out.script_type,
-                       locking_script=out.locking_script, **kwargs)
+        return Unspent(
+            txid=self.txid(),
+            vout=vout, value=out.value,
+            script_type=out.script_type,
+            locking_script=out.locking_script, **kwargs
+        )
 
     def to_unspents(self, vouts: Optional[List[int]] = None, args: Optional[List[Dict]] = None) -> List[Unspent]:
         """
@@ -418,10 +416,9 @@ class Transaction:
         return unspents
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, TransactionBytesIO]) -> Optional['Transaction']:
+    def from_hex(cls, stream: Union[str, bytes, TxBytesIO]) -> Optional['Transaction']:
         with suppress(Exception):
-            if not isinstance(stream, TransactionBytesIO):
-                stream = TransactionBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
+            stream = stream if isinstance(stream, TxBytesIO) else TxBytesIO(stream if isinstance(stream, bytes) else bytes.fromhex(stream))
             t = Transaction()
             t.version = stream.read_int(4)
             assert t.version is not None

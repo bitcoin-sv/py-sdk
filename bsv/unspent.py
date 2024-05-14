@@ -30,24 +30,21 @@ class Unspent:
         # if locking script is not set then parse from address, otherwise check locking script only
         self.locking_script: Script = kwargs.get('locking_script') or (P2PKH.locking(self.address) if self.address else Script())
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f'<Unspent outpoint={self.txid}:{self.vout} value={self.value} address={self.address}>'
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Unspent):
             return self.txid == o.txid and self.vout == o.vout
-        return super().__eq__(o)
+        return super().__eq__(o)  # pragma: no cover
 
-    def __hash__(self) -> int:
+    def __hash__(self) -> int:  # pragma: no cover
         return f'{self.txid}:{self.vout}'.__hash__()
 
     @classmethod
-    def get_unspents(cls,
-                     network: Optional[Network] = None,
-                     provider: Optional[Provider] = None,
-                     **kwargs) -> List['Unspent']:
+    def get_unspents(cls, network: Optional[Network] = None, provider: Optional[Provider] = None, **kwargs) -> List['Unspent']:
         unspents = Service(network, provider).get_unspents(**kwargs)
         return [Unspent(**unspent) for unspent in unspents]

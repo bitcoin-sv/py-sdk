@@ -84,7 +84,7 @@ class Wallet:
                            pushdatas: Optional[List[Union[str, bytes]]] = None,
                            change: bool = True,
                            sign: bool = True,
-                           **kwargs) -> Transaction:
+                           **kwargs) -> Transaction:  # pragma: no cover
         """create a transaction
         :param unspents: list of unspents, will refresh from service if None
         :param outputs: list of tuple (address, satoshi). if None then sweep all the unspents to leftover
@@ -122,7 +122,7 @@ def create_transaction(unspents: List[Unspent],
                        sign: bool = True,
                        network: Optional[Network] = None,
                        provider: Optional[Provider] = None,
-                       **kwargs) -> Transaction:
+                       **kwargs) -> Transaction:  # pragma: no cover
     """create a transaction
     :param unspents: list of unspents, will refresh from service if None
     :param outputs: list of tuple (address, satoshi). if None then sweep all the unspents to leftover

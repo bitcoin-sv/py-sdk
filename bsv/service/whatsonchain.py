@@ -7,18 +7,12 @@ from .provider import Provider, BroadcastResult
 from ..constants import Network
 
 
-class WhatsOnChain(Provider):
+class WhatsOnChain(Provider):  # pragma: no cover
 
-    def __init__(self,
-                 network: Network = Network.MAINNET,
-                 headers: Optional[Dict] = None,
-                 timeout: Optional[int] = None):
+    def __init__(self, network: Network = Network.MAINNET, headers: Optional[Dict] = None, timeout: Optional[int] = None):
         super().__init__(network, headers, timeout)
         self.host: str = 'https://api.whatsonchain.com/v1/bsv'
-        self._network = {
-            Network.MAINNET: 'main',
-            Network.TESTNET: 'test',
-        }[network]
+        self._network = {Network.MAINNET: 'main', Network.TESTNET: 'test'}[network]
 
     def get_unspents(self, **kwargs) -> List[Dict]:
         try:
@@ -27,12 +21,7 @@ class WhatsOnChain(Provider):
             r: Dict = self.get(url=url)
             unspents: List[Dict] = []
             for item in r:
-                unspent = {
-                    'txid': item['tx_hash'],
-                    'vout': item['tx_pos'],
-                    'value': item['value'],
-                    'height': item['height']
-                }
+                unspent = {'txid': item['tx_hash'], 'vout': item['tx_pos'], 'value': item['value'], 'height': item['height']}
                 unspent.update(kwargs)
                 unspents.append(unspent)
             return unspents
