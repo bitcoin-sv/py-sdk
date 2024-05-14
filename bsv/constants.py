@@ -4,7 +4,13 @@ from typing import Dict, List
 
 NUMBER_BYTE_LENGTH: int = 32
 
+TRANSACTION_SEQUENCE: int = int(os.getenv('BSV_PY_SDK_TRANSACTION_SEQUENCE') or 0xffffffff)
+TRANSACTION_VERSION: int = int(os.getenv('BSV_PY_SDK_TRANSACTION_VERSION') or 1)
+TRANSACTION_LOCKTIME: int = int(os.getenv('BSV_PY_SDK_TRANSACTION_LOCKTIME') or 0)
+TRANSACTION_FEE_RATE: float = float(os.getenv('BSV_PY_SDK_TRANSACTION_FEE_RATE') or 0.5)  # satoshi per byte
+
 HTTP_REQUEST_TIMEOUT: int = int(os.getenv('BSV_PY_SDK_HTTP_REQUEST_TIMEOUT') or 30)
+THREAD_POOL_MAX_EXECUTORS: int = int(os.getenv('BSV_PY_SDK_THREAD_POOL_MAX_EXECUTORS') or 10)
 
 
 class Network(str, Enum):

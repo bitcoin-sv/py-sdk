@@ -6,6 +6,7 @@ from typing import List, Optional, Union, Dict, Any
 from typing_extensions import Literal
 
 from .constants import SIGHASH, Network
+from .constants import TRANSACTION_VERSION, TRANSACTION_LOCKTIME, TRANSACTION_SEQUENCE, TRANSACTION_FEE_RATE
 from .hash import hash256
 from .keys import PrivateKey
 from .script.script import Script
@@ -55,19 +56,13 @@ class TransactionBytesIO(BytesIO):
             return self.read_int(8)
 
 
-SEQUENCE = 0xffffffff
-VERSION = 1
-LOCKTIME = 0
-FEE_RATE = 0.5  # satoshi per byte
-
-
 class TxInput:
 
     def __init__(self,
                  unspent: Optional[Unspent] = None,
                  private_keys: Optional[List[PrivateKey]] = None,
                  unlocking_script: Optional[Script] = None,
-                 sequence: int = SEQUENCE,
+                 sequence: int = TRANSACTION_SEQUENCE,
                  sighash: SIGHASH = SIGHASH.ALL_FORKID):
         self.txid: str = unspent.txid if unspent else ('00' * 32)
         self.vout: int = unspent.vout if unspent else 0
@@ -170,8 +165,8 @@ class Transaction:
     def __init__(self,
                  tx_inputs: Optional[List[TxInput]] = None,
                  tx_outputs: Optional[List[TxOutput]] = None,
-                 version: int = VERSION,
-                 locktime: int = LOCKTIME,
+                 version: int = TRANSACTION_VERSION,
+                 locktime: int = TRANSACTION_LOCKTIME,
                  fee_rate: Optional[float] = None,
                  network: Optional[Network] = None,
                  provider: Optional[Provider] = None,
@@ -180,7 +175,7 @@ class Transaction:
         self.outputs: List[TxOutput] = tx_outputs or []
         self.version: int = version
         self.locktime: int = locktime
-        self.fee_rate: float = fee_rate if fee_rate is not None else FEE_RATE
+        self.fee_rate: float = fee_rate if fee_rate is not None else TRANSACTION_FEE_RATE
 
         self.network: Network = network
         self.provider: Provider = provider
