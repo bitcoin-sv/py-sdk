@@ -55,12 +55,12 @@ class WhatsOnChain(Provider):  # pragma: no cover
             message = message or str(e)
         return BroadcastResult(propagated, message)
     
-    def is_valid_root_for_height(self, root: str, height: int) -> bool:
+    def is_valid_root_for_height(self, root: str, height: int, throw: bool = False) -> bool:
         try:
             url = f"{self.URL}/block/{height}/header"
             r: Dict = self.get(url=url)
             return r.get('merkleroot') == root
         except Exception as e:
-            if kwargs.get('throw'):
+            if throw:
                 raise e
         return False
