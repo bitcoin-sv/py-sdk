@@ -6,6 +6,7 @@ from .script.script import Script
 from .script.type import ScriptType, P2PKH, Unknown
 from .service.provider import Provider
 from .service.service import Service
+from .merkle_path import MerklePath
 
 
 class Unspent:
