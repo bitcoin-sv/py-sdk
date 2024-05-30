@@ -1,5 +1,7 @@
 from .utils import Reader, Writer, to_hex, to_bytes
 from .hash import hash256
+from .service import Service
+
 # from .chain_tracker import ChainTracker
 from typing import List, Dict, Optional, Union, TypedDict
 
@@ -50,7 +52,7 @@ class MerklePath:
                         f"Duplicate offset: {leaf['offset']}, at height: {height}"
                     )
                 offsets_at_this_height.add(leaf["offset"])
-                
+
                 if height == 0:
                     if not leaf.get("duplicate"):
                         for h in range(1, len(self.path)):
@@ -194,7 +196,14 @@ class MerklePath:
         if not isinstance(txid, str):
             txid = next(leaf["hash_str"] for leaf in self.path[0] if "hash_str" in leaf)
 
-        index = next((leaf["offset"] for leaf in self.path[0] if leaf.get("hash_str", None) == txid), None)
+        index = next(
+            (
+                leaf["offset"]
+                for leaf in self.path[0]
+                if leaf.get("hash_str", None) == txid
+            ),
+            None,
+        )
         if not isinstance(index, int):
             raise ValueError(f"This proof does not contain the txid: {txid}")
 
@@ -217,19 +226,20 @@ class MerklePath:
 
         return working_hash
 
-    # async def verify(self, txid: str, chain_tracker: ChainTracker) -> bool:
-    #    """
-    #    Verifies if the given transaction ID is part of the Merkle tree at the specified block height.
+    def verify(self, txid: str, service: Service) -> bool:
+        # TODO: Should be async once service methods are async as well.
+        """
+        Verifies if the given transaction ID is part of the Merkle tree at the specified block height.
 
-    #    Args:
-    #        txid (str): The transaction ID to verify.
-    #        chain_tracker (ChainTracker): The ChainTracker instance used to verify the Merkle root.
+        Args:
+            txid (str): The transaction ID to verify.
+            service (Service): The Service instance used to verify the Merkle root.
 
-    #    Returns:
-    #        bool: True if the transaction ID is valid within the Merkle Path at the specified block height.
-    #    """
-    #    root = self.compute_root(txid)
-    #    return await chain_tracker.is_valid_root_for_height(root, self.block_height)
+        Returns:
+            bool: True if the transaction ID is valid within the Merkle Path at the specified block height.
+        """
+        root = self.compute_root(txid)
+        return service.is_valid_root_for_height(root, self.block_height)
 
     def combine(self, other: "MerklePath") -> None:
         """

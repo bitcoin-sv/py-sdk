@@ -15,7 +15,7 @@ from .keys import PrivateKey
 from .script.script import Script
 from .script.type import ScriptType, P2PKH, OpReturn, Unknown
 from .service.provider import Provider, BroadcastResult
-from .service.service import Service
+from .service import Service
 from .unspent import Unspent
 from .utils import unsigned_to_varint, Reader, Writer
 from .merkle_path import MerklePath
@@ -619,6 +619,54 @@ class Transaction:
         assert t.lock_time is not None
         return t
     
-    #def verify() -> bool:
-    #    # TODO: Implement once we have chain trackers.
-    #    pass
+    def verify(self, service: Optional[Service] = None, scripts_only = False) -> bool:
+        if service is None:
+            service = Service()
+
+        if isinstance(self.merkle_path, object) and not scripts_only:
+            proof_valid = self.merkle_path.verify(self.txid(), service)
+            if proof_valid:
+                return True
+            
+        input_total = 0
+        for i, tx_input in enumerate(self.inputs):
+            if not tx_input.get('source_transaction', False):
+                raise ValueError(f"Verification failed because the input at index {i} of transaction {self.txid()} is missing an associated source transaction. This source transaction is required for transaction verification because there is no merkle proof for the transaction spending a UTXO it contains.")
+            if not tx_input.get('unlocking_script', False):
+                raise ValueError(f"Verification failed because the input at index {i} of transaction {self.txid()} is missing an associated unlocking script. This script is required for transaction verification because there is no merkle proof for the transaction spending the UTXO.")
+            
+            # TODO: Is the whole source transaction really needed here?
+            
+            source_output = tx_input.source_transaction.outputs[tx_input.vout]
+            input_total += source_output.satoshis
+
+            input_verified = tx_input.source_transaction.verify(service)
+            if not input_verified:
+                return False
+
+            other_inputs = self.inputs[:i] + self.inputs[i+1:]
+            # TODO: Implement spend interface...
+            #spend = Spend(
+            #    txid=tx_input.source_transaction.txid(),
+            #    vout=tx_input.vout,
+            #    locking_script=source_output.locking_script,
+            #    value=source_output.value,
+            #    version=self.version,
+            #    other_inputs=other_inputs,
+            #    unlocking_script=tx_input.unlocking_script,
+            #    sequence=tx_input.sequence,
+            #    inputIndex=i,
+            #    outputs=self.outputs,
+            #    locktime=self.locktime
+            #)
+            #spend_valid = spend.validate()
+            #if not spend_valid:
+            #    return False
+
+        output_total = 0
+        for out in self.outputs:
+            if not isinstance(out.satoshis, int):
+                raise ValueError("Every output must have a defined amount during transaction verification.")
+            output_total += out.satoshis
+
+        return output_total <= input_total
