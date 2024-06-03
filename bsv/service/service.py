@@ -22,3 +22,6 @@ class Service:
 
     def broadcast(self, raw: str) -> BroadcastResult:
         return self.provider.broadcast(raw)  # pragma: no cover
+    
+    def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        return self.provider.is_valid_root_for_height(root, height)

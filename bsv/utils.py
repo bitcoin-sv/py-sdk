@@ -1,9 +1,11 @@
 import math
 import re
+import struct
 from base64 import b64encode, b64decode
 from contextlib import suppress
 from secrets import randbits
-from typing import Tuple, Optional, Union, Literal
+from typing import Tuple, Optional, Union, Literal, List
+from io import BytesIO
 
 from .base58 import base58check_decode
 from .constants import Network, ADDRESS_PREFIX_NETWORK_DICT, WIF_PREFIX_NETWORK_DICT, NUMBER_BYTE_LENGTH
@@ -267,3 +269,281 @@ def encode_int(num: int) -> bytes:
     if negative:
         octets[-1] |= 0x80
     return encode_pushdata(octets)
+
+
+def to_hex(byte_array: bytes) -> str:
+    return byte_array.hex()
+
+
+def to_bytes(msg: Union[bytes, str], enc: Optional[str] = None) -> bytes:
+    """Converts various message formats into a bytes object."""
+    if isinstance(msg, bytes):
+        return msg
+
+    if not msg:
+        return bytes()
+
+    if isinstance(msg, str):
+        if enc == 'hex':
+            msg = ''.join(filter(str.isalnum, msg))
+            if len(msg) % 2 != 0:
+                msg = '0' + msg
+            return bytes(int(msg[i:i + 2], 16) for i in range(0, len(msg), 2))
+        elif enc == 'base64':
+            import base64
+            return base64.b64decode(msg)
+        else:  # UTF-8 encoding
+            return msg.encode('utf-8')
+    
+    return bytes(msg)
+
+
+def to_utf8(arr: List[int]) -> str:
+    """Converts an array of numbers to a UTF-8 encoded string."""
+    return bytes(arr).decode('utf-8')
+
+
+def encode(arr: List[int], enc: Optional[str] = None) -> Union[str, List[int]]:
+    """Encodes an array of numbers into a specified encoding ('hex' or 'utf8')."""
+    if enc == 'hex':
+        return to_hex(bytes(arr))
+    elif enc == 'utf8':
+        return to_utf8(arr)
+    return arr
+
+
+def to_base64(byte_array: List[int]) -> str:
+    """Converts an array of bytes into a base64 encoded string."""
+    import base64
+    return base64.b64encode(bytes(byte_array)).decode('ascii')
+
+
+base58chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+
+def from_base58(str_: str) -> List[int]:
+    """Converts a base58 string to a binary array."""
+    if not str_ or not isinstance(str_, str):
+        raise ValueError(f"Expected base58 string but got '{str_}'")
+    if '0' in str_ or 'I' in str_ or 'O' in str_ or 'l' in str_:
+        raise ValueError(f"Invalid base58 character in '{str_}'")
+
+    lz = len(str_) - len(str_.lstrip('1'))
+    psz = lz
+
+    acc = 0
+    for char in str_:
+        acc = acc * 58 + base58chars.index(char)
+
+    result = []
+    while acc > 0:
+        result.append(acc % 256)
+        acc //= 256
+
+    return [0] * psz + list(reversed(result))
+
+
+def to_base58(bin_: List[int]) -> str:
+    """Converts a binary array into a base58 string."""
+    acc = 0
+    for byte in bin_:
+        acc = acc * 256 + byte
+
+    result = ''
+    while acc > 0:
+        acc, mod = divmod(acc, 58)
+        result = base58chars[mod] + result
+
+    for byte in bin_:
+        if byte == 0:
+            result = '1' + result
+        else:
+            break
+
+    return result
+
+
+def to_base58_check(bin_: List[int], prefix: List[int] = [0]) -> str:
+    """Converts a binary array into a base58check string with a checksum."""
+    import hashlib
+    hash_ = hashlib.sha256(hashlib.sha256(bytes(prefix + bin_)).digest()).digest()
+    return to_base58(prefix + bin_ + list(hash_[:4]))
+
+
+def from_base58_check(str_: str, enc: Optional[str] = None, prefix_length: int = 1):
+    """Converts a base58check string into a binary array after validating the checksum."""
+    bin_ = from_base58(str_)
+    prefix = bin_[:prefix_length]
+    data = bin_[prefix_length:-4]
+    checksum = bin_[-4:]
+
+    import hashlib
+    hash_ = hashlib.sha256(hashlib.sha256(bytes(prefix + data)).digest()).digest()
+    if list(hash_[:4]) != checksum:
+        raise ValueError('Invalid checksum')
+
+    if enc == 'hex':
+        prefix = to_hex(bytes(prefix))
+        data = to_hex(bytes(data))
+
+    return {'prefix': prefix, 'data': data}
+
+class Writer(BytesIO):
+    def __init__(self):
+        super().__init__()
+
+    def write(self, buf: bytes) -> 'Writer':
+        super().write(buf)
+        return self
+
+    def write_reverse(self, buf: bytes) -> 'Writer':
+        super().write(buf[::-1])
+        return self
+
+    def write_uint8(self, n: int) -> 'Writer':
+        self.write(struct.pack('B', n))
+        return self
+
+    def write_int8(self, n: int) -> 'Writer':
+        self.write(struct.pack('b', n))
+        return self
+
+    def write_uint16_be(self, n: int) -> 'Writer':
+        self.write(struct.pack('>H', n))
+        return self
+
+    def write_int16_be(self, n: int) -> 'Writer':
+        self.write(struct.pack('>h', n))
+        return self
+
+    def write_uint16_le(self, n: int) -> 'Writer':
+        self.write(struct.pack('<H', n))
+        return self
+
+    def write_int16_le(self, n: int) -> 'Writer':
+        self.write(struct.pack('<h', n))
+        return self
+
+    def write_uint32_be(self, n: int) -> 'Writer':
+        self.write(struct.pack('>I', n))
+        return self
+
+    def write_int32_be(self, n: int) -> 'Writer':
+        self.write(struct.pack('>i', n))
+        return self
+
+    def write_uint32_le(self, n: int) -> 'Writer':
+        self.write(struct.pack('<I', n))
+        return self
+
+    def write_int32_le(self, n: int) -> 'Writer':
+        self.write(struct.pack('<i', n))
+        return self
+
+    def write_var_int_num(self, n: int) -> 'Writer':
+        self.write(self.var_int_num(n))
+        return self
+
+    def to_bytes(self) -> bytes:
+        return self.getvalue()
+
+    @staticmethod
+    def var_int_num(n: int) -> bytes:
+        return unsigned_to_varint(n)
+
+
+class Reader(BytesIO):
+    def __init__(self, data: bytes):
+        super().__init__(data)
+
+    def eof(self) -> bool:
+        return self.tell() >= len(self.getvalue())
+
+    def read(self, length: int = None) -> bytes:
+        result = super().read(length)
+        return result if result else None
+
+    def read_reverse(self, length: int = None) -> bytes:
+        data = self.read(length)
+        return data[::-1] if data else None
+
+    def read_uint8(self) -> Optional[int]:
+        data = self.read(1)
+        return data[0] if data else None
+
+    def read_int8(self) -> Optional[int]:
+        data = self.read(1)
+        return int.from_bytes(data, byteorder='big', signed=True) if data else None
+
+    def read_uint16_be(self) -> Optional[int]:
+        data = self.read(2)
+        return int.from_bytes(data, byteorder='big') if data else None
+
+    def read_int16_be(self) -> Optional[int]:
+        data = self.read(2)
+        return int.from_bytes(data, byteorder='big', signed=True) if data else None
+
+    def read_uint16_le(self) -> Optional[int]:
+        data = self.read(2)
+        return int.from_bytes(data, byteorder='little') if data else None
+
+    def read_int16_le(self) -> Optional[int]:
+        data = self.read(2)
+        return int.from_bytes(data, byteorder='little', signed=True) if data else None
+
+    def read_uint32_be(self) -> Optional[int]:
+        data = self.read(4)
+        return int.from_bytes(data, byteorder='big') if data else None
+
+    def read_int32_be(self) -> Optional[int]:
+        data = self.read(4)
+        return int.from_bytes(data, byteorder='big', signed=True) if data else None
+
+    def read_uint32_le(self) -> Optional[int]:
+        data = self.read(4)
+        return int.from_bytes(data, byteorder='little') if data else None
+
+    def read_int32_le(self) -> Optional[int]:
+        data = self.read(4)
+        return int.from_bytes(data, byteorder='little', signed=True) if data else None
+
+    def read_var_int_num(self) -> Optional[int]:
+        first_byte = self.read_uint8()
+        if first_byte is None:
+            return None
+        if first_byte < 253:
+            return first_byte
+        elif first_byte == 253:
+            return self.read_uint16_le()
+        elif first_byte == 254:
+            return self.read_uint32_le()
+        elif first_byte == 255:
+            data = self.read(8)
+            return int.from_bytes(data, byteorder='little') if data else None
+        else:
+            raise ValueError("Invalid varint encoding")
+
+    def read_var_int(self) -> Optional[bytes]:
+        first_byte = self.read(1)
+        if not first_byte:
+            return None
+        if first_byte[0] == 0xfd:
+            return first_byte + (self.read(2) or b'')
+        elif first_byte[0] == 0xfe:
+            return first_byte + (self.read(4) or b'')
+        elif first_byte[0] == 0xff:
+            return first_byte + (self.read(8) or b'')
+        else:
+            return first_byte
+
+    def read_bytes(self, byte_length: Optional[int] = None) -> bytes:
+        result = self.read(byte_length)
+        return result if result else b''
+
+    def read_int(
+        self, byte_length: int, byteorder: Literal["big", "little"] = "little"
+    ) -> Optional[int]:
+        octets = self.read_bytes(byte_length)
+        if not octets:
+            return None
+        return int.from_bytes(octets, byteorder=byteorder)

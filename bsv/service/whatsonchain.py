@@ -6,6 +6,7 @@ import requests
 from .provider import Provider, BroadcastResult
 from ..constants import Network
 
+# TODO: Async requests?
 
 class WhatsOnChain(Provider):  # pragma: no cover
 
@@ -53,3 +54,13 @@ class WhatsOnChain(Provider):  # pragma: no cover
         except Exception as e:
             message = message or str(e)
         return BroadcastResult(propagated, message)
+    
+    def is_valid_root_for_height(self, root: str, height: int, throw: bool = False) -> bool:
+        try:
+            url = f"{self.URL}/block/{height}/header"
+            r: Dict = self.get(url=url)
+            return r.get('merkleroot') == root
+        except Exception as e:
+            if throw:
+                raise e
+        return False
