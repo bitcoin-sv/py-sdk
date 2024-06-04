@@ -232,9 +232,12 @@ class Transaction:
         return self.serialize().hex()
 
     raw = hex
-
+    
+    def hash(self) -> bytes:
+        return hash256(self.serialize())
+        
     def txid(self) -> str:
-        return hash256(self.serialize())[::-1].hex()
+        return self.hash()[::-1].hex()
 
     def _digest(
         self,
@@ -548,6 +551,36 @@ class Transaction:
 
         add_path_or_inputs(transactions[last_TXID])
         return transactions[last_TXID]["tx"]
+    
+    def to_EF(self):
+        writer = Writer()
+        writer.write_uint32_le(self.version)
+        writer.write(bytes.fromhex('0000000000ef'))
+        writer.write_var_int_num(len(self.inputs))
+
+        for i in self.inputs:
+            if i.source_transaction is None:
+                raise ValueError('All inputs must have source transactions when serializing to EF format')
+            writer.write(i.source_transaction.hash())
+            writer.write_uint32_le(i.vout)
+            script_bin = i.unlocking_script.serialize()
+            writer.write_var_int_num(len(script_bin))
+            writer.write(script_bin)
+            writer.write_uint32_le(i.sequence)
+            writer.write_uint64_le(i.source_transaction.outputs[i.vout].value)
+            locking_script_bin = i.source_transaction.outputs[i.vout].locking_script.serialize()
+            writer.write_var_int_num(len(locking_script_bin))
+            writer.write(locking_script_bin)
+
+        writer.write_var_int_num(len(self.outputs))
+        for o in self.outputs:
+            writer.write_uint64_le(o.value)
+            script_bin = o.locking_script.serialize()
+            writer.write_var_int_num(len(script_bin))
+            writer.write(script_bin)
+
+        writer.write_uint32_le(self.locktime)
+        return writer.to_bytes()
     
     def to_BEEF(self) -> bytes:
         writer = Writer()
