@@ -33,7 +33,7 @@ def encrypt(message: bytes, sender: PrivateKey, recipient: PublicKey) -> bytes:
     invoice_number = f'2-message encryption-{key_id_base64}'
     sender_child = sender.derive_child(recipient, invoice_number)
     recipient_child = recipient.derive_child(sender, invoice_number)
-    shared_secret = sender_child.ecdh_key(recipient_child)
+    shared_secret = sender_child.derive_shared_secret(recipient_child)
     symmetric_key = shared_secret[1:]
     encrypted = aes_gcm_encrypt(symmetric_key, message)
     return VERSION + sender.public_key().serialize() + recipient.serialize() + key_id + encrypted
@@ -62,7 +62,7 @@ def decrypt(message: bytes, recipient: PrivateKey) -> bytes:
         sender = PublicKey(sender_pubkey)
         sender_child = sender.derive_child(recipient, invoice_number)
         recipient_child = recipient.derive_child(sender, invoice_number)
-        shared_secret = sender_child.ecdh_key(recipient_child)
+        shared_secret = sender_child.derive_shared_secret(recipient_child)
         symmetric_key = shared_secret[1:]
         return aes_gcm_decrypt(symmetric_key, encrypted)
     except Exception as e:
