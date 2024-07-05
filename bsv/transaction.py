@@ -33,7 +33,7 @@ class TxInput:
         source_txid: Optional[str] = None,
         source_output_index: int = 0,
         unlocking_script: Optional[Script] = None,
-        script_template: Optional[ScriptTemplate] = Unknown(),
+        unlocking_script_template: Optional[ScriptTemplate] = Unknown(),
         private_keys: Optional[List[PrivateKey]] = None,
         sequence: int = TRANSACTION_SEQUENCE,
         sighash: SIGHASH = SIGHASH.ALL_FORKID,
@@ -46,12 +46,12 @@ class TxInput:
         self.vout: int = source_output_index
         self.value: int = utxo.value if utxo else None
         self.private_keys: List[PrivateKey] = private_keys or []
-        self.script_template: ScriptTemplate = script_template
         self.locking_script: Script = utxo.locking_script if utxo else None
         
         self.source_transaction = source_transaction
 
         self.unlocking_script: Script = unlocking_script
+        self.unlocking_script_template: ScriptTemplate = unlocking_script_template
         self.sequence: int = sequence
         self.sighash: SIGHASH = sighash
 
@@ -343,7 +343,7 @@ class Transaction:
                     "private_keys": tx_input.private_keys,
                     "sighash": tx_input.sighash,
                 }
-                tx_input.unlocking_script = tx_input.script_template.unlocking(
+                tx_input.unlocking_script = tx_input.unlocking_script_template.unlocking(
                     **payload, **{**self.kwargs, **kwargs}
                 )
         return self
@@ -386,7 +386,7 @@ class Transaction:
             else:
                 estimated_length += (
                     41
-                    + tx_input.script_template.estimated_unlocking_byte_length(
+                    + tx_input.unlocking_script_template.estimated_unlocking_byte_length(
                         private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs}
                     )
                 )
@@ -422,7 +422,7 @@ class Transaction:
             change_output: Optional[TxOutput] = None
             if not change_address:
                 for tx_input in self.inputs:
-                    if isinstance(tx_input.script_template, P2PKH):
+                    if isinstance(tx_input.unlocking_script_template, P2PKH):
                         change_output = TxOutput(
                             locking_script=tx_input.locking_script,
                             value=fee_overpaid,

@@ -140,7 +140,7 @@ def test_estimated_byte_length():
     _in = TxInput(
         source_txid='00' * 32,
         unlocking_script=None,
-        script_template=P2PKH(PrivateKey().address())
+        unlocking_script_template=P2PKH(PrivateKey().address())
     )
     _in.value = 2000
 
@@ -305,7 +305,7 @@ def test_digest():
         source_transaction=Transaction([], [None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
         source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
         source_output_index=1,
-        script_template=P2PKH(address)
+        unlocking_script_template=P2PKH(address)
     )
     t.add_input(t_in)
     t.add_output(TxOutput(
@@ -320,13 +320,13 @@ def test_digest():
         source_transaction=Transaction([], [None, None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
         source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
         source_output_index=2,
-        script_template=P2PKH(address)
+        unlocking_script_template=P2PKH(address)
     )
     t_in2 = TxInput(
         source_transaction=Transaction([], [TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
         source_txid='fcc1a53e8bb01dbc094e86cb86f195219022c26e0c03d6f18ea17c3a3ba3c1e4',
         source_output_index=0,
-        script_template=P2PKH(address)
+        unlocking_script_template=P2PKH(address)
     )
     t.add_inputs([
         t_in1, t_in2
@@ -335,7 +335,7 @@ def test_digest():
     assert t.digest(0) == expected_digest[0]
     assert t.digest(1) == expected_digest[1]
     
-
+    
 def test_transaction():
     address = '1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'
     t = Transaction()
@@ -343,7 +343,7 @@ def test_transaction():
         source_transaction=Transaction([], [None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
         source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
         source_output_index=1,
-        script_template=P2PKH(address)
+        unlocking_script_template=P2PKH(address)
     )
     t.add_input(t_in)
     t.add_output(TxOutput(P2PKH('1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw').locking(), value=800))
