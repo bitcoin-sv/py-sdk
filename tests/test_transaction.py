@@ -357,3 +357,42 @@ def test_output():
     assert TxOutput(
         locking_script=OpReturn(['123', '456']).locking()
     ).locking_script == Script('006a' + '03313233' + '03343536')
+
+def test_digest():
+    address = '1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'
+    # https://whatsonchain.com/tx/4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb
+    expected_digest = [digest1]
+    t: Transaction = Transaction()
+    t_in = TxInput(
+        source_transaction=Transaction([], [None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
+        source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
+        source_output_index=1,
+        script_template=P2PKH(address)
+    )
+    t.add_input(t_in)
+    t.add_output(TxOutput(
+        locking_script=P2PKH('1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw').locking(), value=800
+        ))
+    assert t.digests() == expected_digest
+
+    # https://whatsonchain.com/tx/c04bbd007ad3987f9b2ea8534175b5e436e43d64471bf32139b5851adf9f477e
+    expected_digest = [digest2, digest3]
+    t: Transaction = Transaction()
+    t_in1 = TxInput(
+        source_transaction=Transaction([], [None, None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
+        source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
+        source_output_index=2,
+        script_template=P2PKH(address)
+    )
+    t_in2 = TxInput(
+        source_transaction=Transaction([], [TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
+        source_txid='fcc1a53e8bb01dbc094e86cb86f195219022c26e0c03d6f18ea17c3a3ba3c1e4',
+        source_output_index=0,
+        script_template=P2PKH(address)
+    )
+    t.add_inputs([
+        t_in1, t_in2
+    ])
+    t.add_output(TxOutput(P2PKH('18CgRLx9hFZqDZv75J5kED7ANnDriwvpi1').locking(), value=1700))
+    assert t.digest(0) == expected_digest[0]
+    assert t.digest(1) == expected_digest[1]
