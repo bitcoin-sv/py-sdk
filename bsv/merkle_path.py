@@ -1,9 +1,9 @@
 from .utils import Reader, Writer, to_hex, to_bytes
 from .hash import hash256
-from .service import Service
+from .chaintracker import ChainTracker
 
 # from .chain_tracker import ChainTracker
-from typing import List, Dict, Optional, Union, TypedDict
+from typing import List, Dict, Optional, Union, TypedDict, Awaitable
 
 
 class MerkleLeaf(TypedDict, total=False):
@@ -226,20 +226,19 @@ class MerklePath:
 
         return working_hash
 
-    def verify(self, txid: str, service: Service) -> bool:
-        # TODO: Should be async once service methods are async as well.
+    async def verify(self, txid: str, chaintracker: ChainTracker) -> Awaitable[bool]:
         """
         Verifies if the given transaction ID is part of the Merkle tree at the specified block height.
 
         Args:
             txid (str): The transaction ID to verify.
-            service (Service): The Service instance used to verify the Merkle root.
+            chaintracker (ChainTracker): The ChainTracker instance used to verify the Merkle root.
 
         Returns:
             bool: True if the transaction ID is valid within the Merkle Path at the specified block height.
         """
         root = self.compute_root(txid)
-        return service.is_valid_root_for_height(root, self.block_height)
+        return chaintracker.is_valid_root_for_height(root, self.block_height)
 
     def combine(self, other: "MerklePath") -> None:
         """

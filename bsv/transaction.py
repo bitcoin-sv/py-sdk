@@ -14,9 +14,10 @@ from .hash import hash256
 from .keys import PrivateKey
 from .script.script import Script
 from .script.type import ScriptType, P2PKH, OpReturn, Unknown
-from .service.provider import Provider, BroadcastResult
-from .service import Service
-from .unspent import Unspent
+from .broadcaster import Broadcaster, BroadcastResponse
+from .broadcasters import default_broadcaster
+from .chaintracker import ChainTracker
+from .chaintrackers import default_chain_tracker
 from .utils import unsigned_to_varint, Reader, Writer
 from .merkle_path import MerklePath
 
@@ -28,24 +29,27 @@ class TxInput:
 
     def __init__(
         self,
-        unspent: Optional[Unspent] = None,
-        private_keys: Optional[List[PrivateKey]] = None,
+        source_transaction = None,
+        source_txid: Optional[str] = None,
+        source_output_index: int = 0,
         unlocking_script: Optional[Script] = None,
+        script_type: Optional[ScriptType] = Unknown,
+        private_keys: Optional[List[PrivateKey]] = None,
         sequence: int = TRANSACTION_SEQUENCE,
         sighash: SIGHASH = SIGHASH.ALL_FORKID,
     ):
-        self.txid: str = unspent.txid if unspent else ("00" * 32)
-        self.vout: int = unspent.vout if unspent else 0
-        self.value: int = unspent.value if unspent else 0
-        self.height: int = unspent.height if unspent else -1
-        self.confirmations: int = unspent.confirmations if unspent else 0
-        self.private_keys: List[PrivateKey] = private_keys or (
-            unspent.private_keys if unspent else []
-        )
-        self.script_type: ScriptType = unspent.script_type if unspent else Unknown
-        self.locking_script: Script = unspent.locking_script if unspent else Script()
+        utxo = None
+        if source_transaction:
+            utxo = source_transaction.outputs[source_output_index]
+
+        self.txid: str = source_txid 
+        self.vout: int = source_output_index
+        self.value: int = utxo.value if utxo else None
+        self.private_keys: List[PrivateKey] = private_keys or []
+        self.script_type: ScriptType = script_type
+        self.locking_script: Script = utxo.locking_script if utxo else None
         
-        self.source_transaction = None
+        self.source_transaction = source_transaction
 
         self.unlocking_script: Script = unlocking_script
         self.sequence: int = sequence
@@ -91,14 +95,14 @@ class TxInput:
             unlocking_script_bytes = stream.read_bytes(script_length)
             sequence = stream.read_int(4)
             assert sequence is not None
-            unspent = Unspent(
-                txid=txid.hex(), vout=vout, value=0, locking_script=Script()
-            )
+            
             return TxInput(
-                unspent=unspent,
+                source_txid=txid.hex(),
+                source_output_index=vout,
                 unlocking_script=Script(unlocking_script_bytes),
                 sequence=sequence,
             )
+
         return None
 
 
@@ -172,8 +176,6 @@ class Transaction:
         locktime: int = TRANSACTION_LOCKTIME,
         merkle_path: Optional[MerklePath] = None,
         fee_rate: Optional[float] = None,
-        network: Optional[Network] = None,
-        provider: Optional[Provider] = None,
         **kwargs,
     ):
         self.inputs: List[TxInput] = tx_inputs or []
@@ -184,11 +186,6 @@ class Transaction:
         self.fee_rate: float = (
             fee_rate if fee_rate is not None else TRANSACTION_FEE_RATE
         )
-
-        self.network: Network = network
-        self.provider: Provider = provider
-        if self.provider:
-            self.network = self.provider.network
 
         self.kwargs: Dict[str, Any] = dict(**kwargs) or {}
 
@@ -204,7 +201,7 @@ class Transaction:
         return raw
 
     def add_input(
-        self, tx_input: Union[TxInput, Unspent]
+        self, tx_input: TxInput
     ) -> "Transaction":  # pragma: no cover
         if isinstance(tx_input, TxInput):
             self.inputs.append(tx_input)
@@ -214,7 +211,7 @@ class Transaction:
             raise TypeError("unsupported transaction input type")
         return self
 
-    def add_inputs(self, tx_inputs: List[Union[TxInput, Unspent]]) -> "Transaction":
+    def add_inputs(self, tx_inputs: List[TxInput]) -> "Transaction":
         for tx_input in tx_inputs:
             self.add_input(tx_input)
         return self
@@ -234,7 +231,10 @@ class Transaction:
     raw = hex
 
     def txid(self) -> str:
-        return hash256(self.serialize())[::-1].hex()
+        return self.hash()[::-1].hex()
+    
+    def hash(self) -> bytes:
+        return hash256(self.serialize())
 
     def _digest(
         self,
@@ -449,42 +449,13 @@ class Transaction:
             self.add_output(change_output)
         return self
 
-    def broadcast(self, check_fee: bool = True) -> BroadcastResult:  # pragma: no cover
+    def broadcast(self, broadcaster: Broadcaster = default_broadcaster(), check_fee: bool = True) -> BroadcastResponse:  # pragma: no cover
         fee_expected = self.estimated_fee()
         if check_fee and self.fee() < fee_expected:
             raise InsufficientFunds(
                 f"require {self.total_value_out() + fee_expected} satoshi but only {self.total_value_in()}"
             )
-        return Service(self.network, self.provider).broadcast(self.hex())
-
-    def to_unspent(self, vout: int, **kwargs) -> Optional[Unspent]:
-        assert 0 <= vout < len(self.outputs), "vout out of range"
-        out = self.outputs[vout]
-        if out.script_type in [OpReturn()]:
-            return None
-        return Unspent(
-            txid=self.txid(),
-            vout=vout,
-            value=out.value,
-            script_type=out.script_type,
-            locking_script=out.locking_script,
-            **kwargs,
-        )
-
-    def to_unspents(
-        self, vouts: Optional[List[int]] = None, args: Optional[List[Dict]] = None
-    ) -> List[Unspent]:
-        """
-        parse all the outputs to unspents if vouts is None or empty, OP_RETURN outputs will be omitted
-        """
-        vouts = vouts or range(len(self.outputs))
-        unspents = []
-        for i in range(len(vouts)):
-            arg = args[i] if args and 0 <= i < len(args) else {}
-            unspent = self.to_unspent(vouts[i], **arg)
-            if unspent:
-                unspents.append(unspent)
-        return unspents
+        return broadcaster.broadcast(self.raw())
 
     @classmethod
     def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["Transaction"]:
@@ -615,16 +586,13 @@ class Transaction:
             _output = TxOutput.from_hex(reader)
             assert _output is not None
             t.outputs.append(_output)
-        t.lock_time = reader.read_uint32_le()
-        assert t.lock_time is not None
+        t.locktime = reader.read_uint32_le()
+        assert t.locktime is not None
         return t
     
-    def verify(self, service: Optional[Service] = None, scripts_only = False) -> bool:
-        if service is None:
-            service = Service()
-
+    async def verify(self, chaintracker: Optional[ChainTracker] = default_chain_tracker(), scripts_only = False) -> bool:
         if isinstance(self.merkle_path, object) and not scripts_only:
-            proof_valid = self.merkle_path.verify(self.txid(), service)
+            proof_valid = self.merkle_path.verify(self.txid(), chaintracker)
             if proof_valid:
                 return True
             
@@ -635,12 +603,10 @@ class Transaction:
             if not tx_input.get('unlocking_script', False):
                 raise ValueError(f"Verification failed because the input at index {i} of transaction {self.txid()} is missing an associated unlocking script. This script is required for transaction verification because there is no merkle proof for the transaction spending the UTXO.")
             
-            # TODO: Is the whole source transaction really needed here?
-            
             source_output = tx_input.source_transaction.outputs[tx_input.vout]
             input_total += source_output.satoshis
 
-            input_verified = tx_input.source_transaction.verify(service)
+            input_verified = tx_input.source_transaction.verify(chaintracker)
             if not input_verified:
                 return False
 
@@ -670,3 +636,44 @@ class Transaction:
             output_total += out.satoshis
 
         return output_total <= input_total
+    
+    @classmethod
+    def parse_script_offsets(cls, bin: Union[bytes, str]) -> Dict[str, List[Dict[str, int]]]:
+        """
+        Since the validation of blockchain data is atomically transaction data validation,
+        any application seeking to validate data in output scripts must store the entire transaction as well.
+        Since the transaction data includes the output script data, saving a second copy of potentially
+        large scripts can bloat application storage requirements.
+
+        This function efficiently parses binary transaction data to determine the offsets and lengths of each script.
+        This supports the efficient retrieval of script data from transaction data.
+
+        @param bin: binary transaction data or hex string
+        @returns: {
+            inputs: { vin: number, offset: number, length: number }[]
+            outputs: { vout: number, offset: number, length: number }[]
+        }
+        """
+        if isinstance(bin, str):
+            bin = bytes.fromhex(bin)
+        
+        br = Reader(bin)
+        inputs: List[Dict[str, int]] = []
+        outputs: List[Dict[str, int]] = []
+
+        br.read(4) # skip version
+        inputs_length = br.read_var_int_num()
+        for i in range(inputs_length):
+            br.read(36) # skip txid and vout
+            script_length = br.read_var_int_num()
+            inputs.append({'vin': i, 'offset': br.tell(), 'length': script_length})
+            br.read(script_length + 4) # script and sequence
+
+        outputs_length = br.read_var_int_num()
+        for i in range(outputs_length):
+            br.read(8)
+            script_length = br.read_var_int_num()
+            outputs.append({'vout': i, 'offset': br.tell(), 'length': script_length})
+            br.read(script_length)  # skip script
+
+        return {'inputs': inputs, 'outputs': outputs}
