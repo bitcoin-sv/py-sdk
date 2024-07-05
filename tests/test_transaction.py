@@ -5,7 +5,7 @@ from bsv.constants import SIGHASH, Network
 from bsv.hash import hash256
 from bsv.keys import PrivateKey
 from bsv.script.script import Script
-from bsv.script.type import P2PKH, P2PK
+from bsv.script.type import P2PKH, P2PK, OpReturn
 from bsv.transaction import TxInput, TxOutput, Transaction
 from bsv.utils import encode_pushdata, Reader
 
@@ -116,7 +116,7 @@ tx_in = TxInput(
 )
 
 tx_out = TxOutput(
-    out=Script('ae'),
+    locking_script=Script('ae'),
     value=5
 )
     
@@ -185,7 +185,8 @@ def test_transaction_add_input():
     
 def test_transaction_add_output():
     tx_out = TxOutput(
-        out=Script('6a')
+        locking_script=Script('6a'),
+        value=0
     )
     tx = Transaction()
     assert len(tx.outputs) == 0
@@ -205,7 +206,10 @@ def test_estimated_byte_length():
     )
     _in.value = 2000
 
-    _out = TxOutput(PrivateKey().address(), 1000)
+    _out = TxOutput(
+        P2PKH(PrivateKey().address()).locking(), 
+        1000
+    )
 
     t = Transaction().add_input(_in).add_output(_out)
 
@@ -350,8 +354,6 @@ def test_transaction_bytes_io():
     assert io.read_var_int_num() == None
     
 def test_output():
-    assert TxOutput(['123', '456']).locking_script == Script('006a' + '03313233' + '03343536')
-
-    with pytest.raises(TypeError, match=r'unsupported transaction output type'):
-        # noinspection PyTypeChecker
-        TxOutput(1)
+    assert TxOutput(
+        locking_script=OpReturn(['123', '456']).locking()
+    ).locking_script == Script('006a' + '03313233' + '03343536')

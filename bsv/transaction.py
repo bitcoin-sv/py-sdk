@@ -108,29 +108,13 @@ class TxInput:
 
 class TxOutput:
     
-    # TODO: No "out" here, just script template:
-
     def __init__(
         self,
-        out: Union[str, List[Union[str, bytes]], Script],
+        locking_script: Script,
         value: int = 0,
-        script_template: ScriptTemplate = Unknown(),
     ):
         self.value = value
-        if isinstance(out, str):
-            # from address
-            self.script_template: ScriptTemplate = P2PKH(out)
-            self.locking_script: Script = self.script_template.locking()
-        elif isinstance(out, List):
-            # from list of pushdata
-            self.script_template: ScriptTemplate = OpReturn(out)
-            self.locking_script: Script = self.script_template.locking()
-        elif isinstance(out, Script):
-            # from locking script
-            self.locking_script: Script = out
-            self.script_template: ScriptTemplate = script_template
-        else:
-            raise TypeError("unsupported transaction output type")
+        self.locking_script = locking_script
 
     def serialize(self) -> bytes:
         return b"".join(
@@ -164,7 +148,7 @@ class TxOutput:
             script_length = stream.read_var_int_num()
             assert script_length is not None
             locking_script_bytes = stream.read_bytes(script_length)
-            return TxOutput(out=Script(locking_script_bytes), value=value)
+            return TxOutput(locking_script=Script(locking_script_bytes), value=value)
         return None
 
 
@@ -440,13 +424,15 @@ class Transaction:
                 for tx_input in self.inputs:
                     if isinstance(tx_input.script_template, P2PKH):
                         change_output = TxOutput(
-                            out=tx_input.locking_script,
+                            locking_script=tx_input.locking_script,
                             value=fee_overpaid,
-                            script_template=P2PKH(change_address),
                         )
                         break
             else:
-                change_output = TxOutput(out=change_address, value=fee_overpaid)
+                change_output = TxOutput(
+                    locking_script=P2PKH(change_address).locking(), 
+                    value=fee_overpaid
+                )
             assert change_output, "can't parse any address from transaction inputs"
             self.add_output(change_output)
         return self
