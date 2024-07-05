@@ -45,68 +45,6 @@ digest3 = bytes.fromhex(
     '00000000'
     '41000000'
 )
-#
-#
-#
-#def test_digest():
-#    address = '1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'
-#    # https://whatsonchain.com/tx/4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb
-#    expected_digest = [digest1]
-#    t: Transaction = Transaction()
-#    t.add_input(Unspent(txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48', vout=1, value=1000, address=address))
-#    t.add_output(TxOutput(out='1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw', value=800))
-#    assert t.digests() == expected_digest
-#
-#    # https://whatsonchain.com/tx/c04bbd007ad3987f9b2ea8534175b5e436e43d64471bf32139b5851adf9f477e
-#    expected_digest = [digest2, digest3]
-#    t: Transaction = Transaction()
-#    t.add_inputs([
-#        Unspent(txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48', vout=2, value=1000, address=address),
-#        Unspent(txid='fcc1a53e8bb01dbc094e86cb86f195219022c26e0c03d6f18ea17c3a3ba3c1e4', vout=0, value=1000, address=address),
-#    ])
-#    t.add_output(TxOutput(out='18CgRLx9hFZqDZv75J5kED7ANnDriwvpi1', value=1700))
-#    assert t.digest(0) == expected_digest[0]
-#    assert t.digest(1) == expected_digest[1]
-#
-#
-#def test_transaction():
-#    address = '1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'
-#    t = Transaction()
-#    t.add_input(Unspent(txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48', vout=1, value=1000, address=address))
-#    t.add_output(TxOutput(out='1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw', value=800))
-#
-#    signature = bytes.fromhex('3044'
-#                              '02207e2c6eb8c4b20e251a71c580373a2836e209c50726e5f8b0f4f59f8af00eee1a'
-#                              '022019ae1690e2eb4455add6ca5b86695d65d3261d914bc1d7abb40b188c7f46c9a5')
-#    sighash = bytes.fromhex('41')
-#    public_key = bytes.fromhex('02e46dcd7991e5a4bd642739249b0158312e1aee56a60fd1bf622172ffe65bd789')
-#    t.inputs[0].unlocking_script = Script(encode_pushdata(signature + sighash) + encode_pushdata(public_key))
-#
-#    assert t.txid() == '4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb'
-#    assert t.fee() == 200
-#    assert t.byte_length() == 191
-#
-#    t.inputs[0].sighash = SIGHASH.NONE_ANYONECANPAY_FORKID
-#    assert t.digest(0) == t._digest(t.inputs[0], b'\x00' * 32, b'\x00' * 32, b'\x00' * 32)
-#    t.inputs[0].sighash = SIGHASH.SINGLE_ANYONECANPAY_FORKID
-#    assert t.digest(0) == t._digest(t.inputs[0], b'\x00' * 32, b'\x00' * 32, hash256(t.outputs[0].serialize()))
-#
-#    t.inputs[0].private_keys = [PrivateKey('L5agPjZKceSTkhqZF2dmFptT5LFrbr6ZGPvP7u4A6dvhTrr71WZ9')]
-#    assert t.estimated_fee() == 96
-#
-#    t.outputs[0].value = 100
-#    t.add_change(address)
-#    # 1-2 transaction 226 bytes --> fee 113 satoshi --> 787 left
-#    assert len(t.outputs) == 2
-#    assert t.outputs[1].locking_script == P2PKH.locking(address)
-#    assert t.outputs[1].value == 787
-#
-#    t.outputs.pop()
-#    t.add_change()
-#    assert len(t.outputs) == 2
-#    assert t.outputs[1].locking_script == P2PKH.locking(address)
-#    assert t.outputs[1].value == 787
-#
 
 BRC62Hex = '0100beef01fe636d0c0007021400fe507c0c7aa754cef1f7889d5fd395cf1f785dd7de98eed895dbedfe4e5bc70d1502ac4e164f5bc16746bb0868404292ac8318bbac3800e4aad13a014da427adce3e010b00bc4ff395efd11719b277694cface5aa50d085a0bb81f613f70313acd28cf4557010400574b2d9142b8d28b61d88e3b2c3f44d858411356b49a28a4643b6d1a6a092a5201030051a05fc84d531b5d250c23f4f886f6812f9fe3f402d61607f977b4ecd2701c19010000fd781529d58fc2523cf396a7f25440b409857e7e221766c57214b1d38c7b481f01010062f542f45ea3660f86c013ced80534cb5fd4c19d66c56e7e8c5d4bf2d40acc5e010100b121e91836fd7cd5102b654e9f72f3cf6fdbfd0b161c53a9c54b12c841126331020100000001cd4e4cac3c7b56920d1e7655e7e260d31f29d9a388d04910f1bbd72304a79029010000006b483045022100e75279a205a547c445719420aa3138bf14743e3f42618e5f86a19bde14bb95f7022064777d34776b05d816daf1699493fcdf2ef5a5ab1ad710d9c97bfb5b8f7cef3641210263e2dee22b1ddc5e11f6fab8bcd2378bdd19580d640501ea956ec0e786f93e76ffffffff013e660000000000001976a9146bfd5c7fbe21529d45803dbcf0c87dd3c71efbc288ac0000000001000100000001ac4e164f5bc16746bb0868404292ac8318bbac3800e4aad13a014da427adce3e000000006a47304402203a61a2e931612b4bda08d541cfb980885173b8dcf64a3471238ae7abcd368d6402204cbf24f04b9aa2256d8901f0ed97866603d2be8324c2bfb7a37bf8fc90edd5b441210263e2dee22b1ddc5e11f6fab8bcd2378bdd19580d640501ea956ec0e786f93e76ffffffff013c660000000000001976a9146bfd5c7fbe21529d45803dbcf0c87dd3c71efbc288ac0000000000'
 MerkleRootFromBEEF = 'bb6f640cc4ee56bf38eb5a1969ac0c16caa2d3d202b22bf3735d10eec0ca6e00'
@@ -396,3 +334,48 @@ def test_digest():
     t.add_output(TxOutput(P2PKH('18CgRLx9hFZqDZv75J5kED7ANnDriwvpi1').locking(), value=1700))
     assert t.digest(0) == expected_digest[0]
     assert t.digest(1) == expected_digest[1]
+    
+
+def test_transaction():
+    address = '1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'
+    t = Transaction()
+    t_in = TxInput(
+        source_transaction=Transaction([], [None, TxOutput(locking_script=P2PKH(address).locking(), value=1000)]),
+        source_txid='d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48',
+        source_output_index=1,
+        script_template=P2PKH(address)
+    )
+    t.add_input(t_in)
+    t.add_output(TxOutput(P2PKH('1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw').locking(), value=800))
+
+    signature = bytes.fromhex('3044'
+                              '02207e2c6eb8c4b20e251a71c580373a2836e209c50726e5f8b0f4f59f8af00eee1a'
+                              '022019ae1690e2eb4455add6ca5b86695d65d3261d914bc1d7abb40b188c7f46c9a5')
+    sighash = bytes.fromhex('41')
+    public_key = bytes.fromhex('02e46dcd7991e5a4bd642739249b0158312e1aee56a60fd1bf622172ffe65bd789')
+    t.inputs[0].unlocking_script = Script(encode_pushdata(signature + sighash) + encode_pushdata(public_key))
+
+    assert t.txid() == '4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb'
+    assert t.fee() == 200
+    assert t.byte_length() == 191
+
+    t.inputs[0].sighash = SIGHASH.NONE_ANYONECANPAY_FORKID
+    assert t.digest(0) == t._digest(t.inputs[0], b'\x00' * 32, b'\x00' * 32, b'\x00' * 32)
+    t.inputs[0].sighash = SIGHASH.SINGLE_ANYONECANPAY_FORKID
+    assert t.digest(0) == t._digest(t.inputs[0], b'\x00' * 32, b'\x00' * 32, hash256(t.outputs[0].serialize()))
+
+    t.inputs[0].private_keys = [PrivateKey('L5agPjZKceSTkhqZF2dmFptT5LFrbr6ZGPvP7u4A6dvhTrr71WZ9')]
+    assert t.estimated_fee() == 96
+
+    t.outputs[0].value = 100
+    t.add_change(address)
+    # 1-2 transaction 226 bytes --> fee 113 satoshi --> 787 left
+    assert len(t.outputs) == 2
+    assert t.outputs[1].locking_script == P2PKH(address).locking()
+    assert t.outputs[1].value == 787
+
+    t.outputs.pop()
+    t.add_change()
+    assert len(t.outputs) == 2
+    assert t.outputs[1].locking_script == P2PKH(address).locking()
+    assert t.outputs[1].value == 787
