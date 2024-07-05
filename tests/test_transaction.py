@@ -201,7 +201,7 @@ def test_estimated_byte_length():
     _in = TxInput(
         source_txid='00' * 32,
         unlocking_script=None,
-        script_type=P2PKH()
+        script_template=P2PKH(PrivateKey().address())
     )
     _in.value = 2000
 

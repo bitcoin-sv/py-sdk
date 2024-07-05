@@ -13,7 +13,7 @@ from .constants import (
 from .hash import hash256
 from .keys import PrivateKey
 from .script.script import Script
-from .script.type import ScriptType, P2PKH, OpReturn, Unknown
+from .script.type import ScriptTemplate, P2PKH, OpReturn, Unknown
 from .broadcaster import Broadcaster, BroadcastResponse
 from .broadcasters import default_broadcaster
 from .chaintracker import ChainTracker
@@ -33,7 +33,7 @@ class TxInput:
         source_txid: Optional[str] = None,
         source_output_index: int = 0,
         unlocking_script: Optional[Script] = None,
-        script_type: Optional[ScriptType] = Unknown,
+        script_template: Optional[ScriptTemplate] = Unknown(),
         private_keys: Optional[List[PrivateKey]] = None,
         sequence: int = TRANSACTION_SEQUENCE,
         sighash: SIGHASH = SIGHASH.ALL_FORKID,
@@ -46,7 +46,7 @@ class TxInput:
         self.vout: int = source_output_index
         self.value: int = utxo.value if utxo else None
         self.private_keys: List[PrivateKey] = private_keys or []
-        self.script_type: ScriptType = script_type
+        self.script_template: ScriptTemplate = script_template
         self.locking_script: Script = utxo.locking_script if utxo else None
         
         self.source_transaction = source_transaction
@@ -107,26 +107,28 @@ class TxInput:
 
 
 class TxOutput:
+    
+    # TODO: No "out" here, just script template:
 
     def __init__(
         self,
         out: Union[str, List[Union[str, bytes]], Script],
         value: int = 0,
-        script_type: ScriptType = Unknown(),
+        script_template: ScriptTemplate = Unknown(),
     ):
         self.value = value
         if isinstance(out, str):
             # from address
-            self.locking_script: Script = P2PKH.locking(out)
-            self.script_type: ScriptType = P2PKH()
+            self.script_template: ScriptTemplate = P2PKH(out)
+            self.locking_script: Script = self.script_template.locking()
         elif isinstance(out, List):
             # from list of pushdata
-            self.locking_script: Script = OpReturn.locking(out)
-            self.script_type: ScriptType = OpReturn()
+            self.script_template: ScriptTemplate = OpReturn(out)
+            self.locking_script: Script = self.script_template.locking()
         elif isinstance(out, Script):
             # from locking script
             self.locking_script: Script = out
-            self.script_type: ScriptType = script_type
+            self.script_template: ScriptTemplate = script_template
         else:
             raise TypeError("unsupported transaction output type")
 
@@ -357,7 +359,7 @@ class Transaction:
                     "private_keys": tx_input.private_keys,
                     "sighash": tx_input.sighash,
                 }
-                tx_input.unlocking_script = tx_input.script_type.unlocking(
+                tx_input.unlocking_script = tx_input.script_template.unlocking(
                     **payload, **{**self.kwargs, **kwargs}
                 )
         return self
@@ -400,7 +402,7 @@ class Transaction:
             else:
                 estimated_length += (
                     41
-                    + tx_input.script_type.estimated_unlocking_byte_length(
+                    + tx_input.script_template.estimated_unlocking_byte_length(
                         private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs}
                     )
                 )
@@ -436,11 +438,11 @@ class Transaction:
             change_output: Optional[TxOutput] = None
             if not change_address:
                 for tx_input in self.inputs:
-                    if tx_input.script_type == P2PKH():
+                    if isinstance(tx_input.script_template, P2PKH):
                         change_output = TxOutput(
                             out=tx_input.locking_script,
                             value=fee_overpaid,
-                            script_type=P2PKH(),
+                            script_template=P2PKH(change_address),
                         )
                         break
             else:
