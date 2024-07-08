@@ -1,7 +1,8 @@
 from abc import abstractmethod, ABCMeta
-from typing import Union, List
+from typing import Union, List, Tuple, Callable
 
 from .script import Script
+from .unlocking_template import UnlockingScriptTemplate
 from ..constants import (
     OpCode,
     PUBLIC_KEY_HASH_BYTE_LENGTH,
@@ -9,6 +10,15 @@ from ..constants import (
     PUBLIC_KEY_BYTE_LENGTH_LIST,
 )
 from ..utils import address_to_public_key_hash, encode_pushdata, encode_int
+from ..keys import PrivateKey, PublicKey
+
+
+def toUnlockScriptTemplate(sign, estimated_unlocking_byte_length):
+    class_attrs = {"sign": sign, "estimated_unlocking_byte_length": estimated_unlocking_byte_length}
+
+    DynamicClass = type("UnlockScriptTemplateImpl", (UnlockingScriptTemplate,), class_attrs)
+
+    return DynamicClass
 
 
 class ScriptTemplate(metaclass=ABCMeta):
@@ -21,18 +31,11 @@ class ScriptTemplate(metaclass=ABCMeta):
         raise NotImplementedError("ScriptTemplate.locking")
 
     @abstractmethod
-    def unlocking(cls, **kwargs) -> Script:
+    def unlocking(cls, **kwargs) -> UnlockingScriptTemplate:
         """
-        :returns: unlocking script
+        :returns: sign (function), estimated_unlocking_byte_length (function)
         """
         raise NotImplementedError("ScriptTemplate.unlocking")
-
-    @abstractmethod
-    def estimated_unlocking_byte_length(cls, **kwargs) -> int:
-        """
-        :returns: estimated byte length of signed unlocking script
-        """
-        raise NotImplementedError("ScriptTemplate.estimated_unlocking_byte_length")
 
 
 class Unknown(ScriptTemplate):  # pragma: no cover
@@ -46,16 +49,19 @@ class Unknown(ScriptTemplate):  # pragma: no cover
     def locking(self, **kwargs) -> Script:
         raise ValueError("don't know how to lock for script of unknown type")
 
-    def unlocking(self, **kwargs) -> Script:
-        raise ValueError("don't know how to unlock for script of unknown type")
-
-    def estimated_unlocking_byte_length(self, **kwargs) -> int:
+    def unlocking(self, **kwargs):
         raise ValueError("don't know how to unlock for script of unknown type")
 
 
 class P2PKH(ScriptTemplate):
 
-    def __init__(self, addr: Union[str, bytes]):
+    def __str__(self) -> str:  # pragma: no cover
+        return "<ScriptTemplate:P2PKH>"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return self.__str__()
+
+    def locking(self, addr: Union[str, bytes]) -> Script:
         """
         from address (str) or public key hash160 (bytes)
         """
@@ -70,47 +76,37 @@ class P2PKH(ScriptTemplate):
             len(pkh) == PUBLIC_KEY_HASH_BYTE_LENGTH
         ), "invalid byte length of public key hash"
 
-        self.pkh = pkh
-
-    def __str__(self) -> str:  # pragma: no cover
-        return "<ScriptTemplate:P2PKH>"
-
-    def __repr__(self) -> str:  # pragma: no cover
-        return self.__str__()
-
-    def locking(self) -> Script:
         return Script(
             OpCode.OP_DUP
             + OpCode.OP_HASH160
-            + encode_pushdata(self.pkh)
+            + encode_pushdata(pkh)
             + OpCode.OP_EQUALVERIFY
             + OpCode.OP_CHECKSIG
         )
 
-    def unlocking(self, **kwargs) -> Script:
-        signature: bytes = kwargs.get("signatures")[0]
-        public_key: bytes = (
-            kwargs.get("public_key")
-            or kwargs.get("private_keys")[0].public_key().serialize()
-        )
-        sighash: SIGHASH = kwargs.get("sighash")
-        return Script(
-            encode_pushdata(signature + sighash.to_bytes(1, "little"))
-            + encode_pushdata(public_key)
-        )
+    def unlocking(self, private_key: PrivateKey):
+        def sign(tx, input_index) -> Script:
+            tx_input = tx.inputs[input_index]
+            sighash = tx_input.sighash
+            digests = (
+                tx.digests()
+            )  # TODO: get only digest for this input to be more efficient
 
-    def estimated_unlocking_byte_length(self, **kwargs) -> int:
-        if not kwargs.get("private_keys"):
-            raise ValueError(
-                f"can't estimate unlocking byte length without private keys"
+            signature = private_key.sign(digests[input_index])
+
+            public_key: bytes = private_key.public_key().serialize()
+            return Script(
+                encode_pushdata(signature + sighash.to_bytes(1, "little"))
+                + encode_pushdata(public_key)
             )
-        return 107 if kwargs.get("private_keys")[0].compressed else 139
+
+        def estimated_unlocking_byte_length() -> int:
+            return 107 if private_key.compressed else 139
+
+        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)
 
 
 class OpReturn(ScriptTemplate):
-
-    def __init__(self, pushdatas: List[Union[str, bytes]]):
-        self.pushdatas = pushdatas
 
     def __str__(self) -> str:  # pragma: no cover
         return "<ScriptTemplate:OP_RETURN>"
@@ -118,9 +114,9 @@ class OpReturn(ScriptTemplate):
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
-    def locking(self) -> Script:
+    def locking(self, pushdatas: List[Union[str, bytes]]) -> Script:
         script: bytes = OpCode.OP_FALSE + OpCode.OP_RETURN
-        for pushdata in self.pushdatas:
+        for pushdata in pushdatas:
             if isinstance(pushdata, str):
                 pushdata_bytes: bytes = pushdata.encode("utf-8")
             elif isinstance(pushdata, bytes):
@@ -130,16 +126,19 @@ class OpReturn(ScriptTemplate):
             script += encode_pushdata(pushdata_bytes, minimal_push=False)
         return Script(script)
 
-    def unlocking(self, **kwargs) -> Script:  # pragma: no cover
-        raise ValueError("OP_RETURN cannot be unlocked")
-
-    def estimated_unlocking_byte_length(self, **kwargs) -> int:  # pragma: no cover
+    def unlocking(self, **kwargs):  # pragma: no cover
         raise ValueError("OP_RETURN cannot be unlocked")
 
 
 class P2PK(ScriptTemplate):
 
-    def __init__(self, public_key: Union[str, bytes]):
+    def __str__(self) -> str:  # pragma: no cover
+        return "<ScriptTemplate:P2PK>"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return self.__str__()
+
+    def locking(self, public_key: Union[str, bytes]) -> Script:
         """
         from public key in format str or bytes
         """
@@ -153,33 +152,40 @@ class P2PK(ScriptTemplate):
         assert (
             len(pk) in PUBLIC_KEY_BYTE_LENGTH_LIST
         ), "invalid byte length of public key"
-        self.pk = pk
 
-    def __str__(self) -> str:  # pragma: no cover
-        return "<ScriptTemplate:P2PK>"
+        return Script(encode_pushdata(pk) + OpCode.OP_CHECKSIG)
 
-    def __repr__(self) -> str:  # pragma: no cover
-        return self.__str__()
+    def unlocking(self, private_key: PrivateKey):
+        def sign(tx, input_index) -> Script:
+            tx_input = tx.inputs[input_index]
+            sighash = tx_input.sighash
+            digests = (
+                tx.digests()
+            )  # TODO: get only digest for this input to be more efficient
 
-    def locking(self) -> Script:
-        return Script(encode_pushdata(self.pk) + OpCode.OP_CHECKSIG)
+            signature = private_key.sign(digests[input_index])
+            return Script(encode_pushdata(signature + sighash.to_bytes(1, "little")))
 
-    def unlocking(self, **kwargs) -> Script:
-        signature: bytes = kwargs.get("signatures")[0]
-        sighash: SIGHASH = kwargs.get("sighash")
-        return Script(encode_pushdata(signature + sighash.to_bytes(1, "little")))
+        def estimated_unlocking_byte_length() -> int:
+            return 73
 
-    def estimated_unlocking_byte_length(self, **kwargs) -> int:
-        return 73  # pragma: no cover
+        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)
 
 
 class BareMultisig(ScriptTemplate):
 
-    def __init__(self, participants: List[Union[str, bytes]], threshold: int):
-        self.participants = []
+    def __str__(self) -> str:  # pragma: no cover
+        return "<ScriptTemplate:BareMultisig>"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return self.__str__()
+
+    def locking(self, participants: List[Union[str, bytes]], threshold: int) -> Script:
         assert (
             1 <= threshold <= len(participants)
         ), "bad threshold or number of participants"
+        
+        participants_parsed = []
         for participant in participants:
             assert type(participant).__name__ in [
                 "str",
@@ -190,37 +196,27 @@ class BareMultisig(ScriptTemplate):
             assert (
                 len(participant) in PUBLIC_KEY_BYTE_LENGTH_LIST
             ), "invalid byte length of public key"
-            self.participants.append(participant)
-        self.threshold = threshold
-
-    def __str__(self) -> str:  # pragma: no cover
-        return "<ScriptTemplate:BareMultisig>"
-
-    def __repr__(self) -> str:  # pragma: no cover
-        return self.__str__()
-
-    def locking(self) -> Script:
-        script: bytes = encode_int(self.threshold)
-        for participant in self.participants:
+            participants_parsed.append(participant)
+        script: bytes = encode_int(threshold)
+        for participant in participants_parsed:
             script += encode_pushdata(participant)
-        return Script(script + encode_int(len(self.participants)) + OpCode.OP_CHECKMULTISIG)
+        return Script(script + encode_int(len(participants)) + OpCode.OP_CHECKMULTISIG)
 
-    def unlocking(self, **kwargs) -> Script:
-        signatures: List[bytes] = kwargs.get("signatures")
-        sighash: SIGHASH = kwargs.get("sighash")
-        script: bytes = OpCode.OP_0
-        for signature in signatures:
-            script += encode_pushdata(signature + sighash.to_bytes(1, "little"))
-        return Script(script)
+    def unlocking(self, private_keys: List[PrivateKey]):
+        def sign(tx, input_index) -> Script:
+            tx_input = tx.inputs[input_index]
+            sighash = tx_input.sighash
+            digests = (
+                tx.digests()
+            )  # TODO: get only digest for this input to be more efficient
 
-    def estimated_unlocking_byte_length(self, **kwargs) -> int:  # pragma: no cover
-        if not kwargs.get("threshold") and not kwargs.get("private_keys"):
-            raise ValueError(
-                f"can't estimate unlocking byte length without threshold value"
-            )
-        threshold = (
-            kwargs.get("threshold")
-            if kwargs.get("threshold")
-            else len(kwargs.get("private_keys"))
-        )
-        return 1 + 73 * threshold
+            script: bytes = OpCode.OP_0
+            for private_key in private_keys:
+                signature = private_key.sign(digests[input_index])
+                script += encode_pushdata(signature + sighash.to_bytes(1, "little"))
+            return Script(script)
+
+        def estimated_unlocking_byte_length() -> int:
+            return 1 + 73 * len(private_keys)
+
+        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)

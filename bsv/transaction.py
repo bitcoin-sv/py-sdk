@@ -1,7 +1,7 @@
 import math
 from contextlib import suppress
 from io import BytesIO
-from typing import List, Optional, Union, Dict, Any, Literal
+from typing import List, Optional, Union, Dict, Any, Literal, Tuple, Callable
 
 from .constants import SIGHASH, Network
 from .constants import (
@@ -20,6 +20,7 @@ from .chaintracker import ChainTracker
 from .chaintrackers import default_chain_tracker
 from .utils import unsigned_to_varint, Reader, Writer
 from .merkle_path import MerklePath
+from .script.unlocking_template import UnlockingScriptTemplate
 
 
 class InsufficientFunds(ValueError):
@@ -33,8 +34,7 @@ class TxInput:
         source_txid: Optional[str] = None,
         source_output_index: int = 0,
         unlocking_script: Optional[Script] = None,
-        unlocking_script_template: Optional[ScriptTemplate] = Unknown(),
-        private_keys: Optional[List[PrivateKey]] = None,
+        unlocking_script_template: UnlockingScriptTemplate = None,
         sequence: int = TRANSACTION_SEQUENCE,
         sighash: SIGHASH = SIGHASH.ALL_FORKID,
     ):
@@ -42,16 +42,15 @@ class TxInput:
         if source_transaction:
             utxo = source_transaction.outputs[source_output_index]
 
-        self.txid: str = source_txid 
+        self.txid: str = source_txid if source_txid else '00' * 32
         self.vout: int = source_output_index
         self.value: int = utxo.value if utxo else None
-        self.private_keys: List[PrivateKey] = private_keys or []
         self.locking_script: Script = utxo.locking_script if utxo else None
         
         self.source_transaction = source_transaction
 
         self.unlocking_script: Script = unlocking_script
-        self.unlocking_script_template: ScriptTemplate = unlocking_script_template
+        self.unlocking_script_template = unlocking_script_template
         self.sequence: int = sequence
         self.sighash: SIGHASH = sighash
 
@@ -330,21 +329,11 @@ class Transaction:
         :bypass: if True then ONLY sign inputs which unlocking script is None, otherwise sign all the inputs
         sign all inputs according to their script type
         """
-        digests = self.digests()
         for i in range(len(self.inputs)):
             tx_input = self.inputs[i]
             if tx_input.unlocking_script is None or not bypass:
-                signatures: List[bytes] = [
-                    private_key.sign(digests[i])
-                    for private_key in tx_input.private_keys
-                ]
-                payload = {
-                    "signatures": signatures,
-                    "private_keys": tx_input.private_keys,
-                    "sighash": tx_input.sighash,
-                }
-                tx_input.unlocking_script = tx_input.unlocking_script_template.unlocking(
-                    **payload, **{**self.kwargs, **kwargs}
+                tx_input.unlocking_script = tx_input.unlocking_script_template.sign(
+                    self, i
                 )
         return self
 
@@ -386,9 +375,7 @@ class Transaction:
             else:
                 estimated_length += (
                     41
-                    + tx_input.unlocking_script_template.estimated_unlocking_byte_length(
-                        private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs}
-                    )
+                    + tx_input.unlocking_script_template.estimated_unlocking_byte_length()
                 )
         for tx_output in self.outputs:
             estimated_length += (
@@ -406,7 +393,7 @@ class Transaction:
         """
         return math.ceil(self.fee_rate * self.estimated_byte_length())
 
-    def add_change(self, change_address: Optional[str] = None) -> "Transaction":
+    def add_change(self, change_address: str) -> "Transaction":
         # byte length increased after adding a P2PKH change output
         size_increased = (
             34
@@ -419,21 +406,10 @@ class Transaction:
         )
         fee_overpaid = self.fee() - fee_expected
         if fee_overpaid > 0:  # pragma: no cover
-            change_output: Optional[TxOutput] = None
-            if not change_address:
-                for tx_input in self.inputs:
-                    if isinstance(tx_input.unlocking_script_template, P2PKH):
-                        change_output = TxOutput(
-                            locking_script=tx_input.locking_script,
-                            value=fee_overpaid,
-                        )
-                        break
-            else:
-                change_output = TxOutput(
-                    locking_script=P2PKH(change_address).locking(), 
-                    value=fee_overpaid
-                )
-            assert change_output, "can't parse any address from transaction inputs"
+            change_output = TxOutput(
+                locking_script=P2PKH().locking(change_address), 
+                value=fee_overpaid
+            )
             self.add_output(change_output)
         return self
 
