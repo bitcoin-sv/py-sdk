@@ -190,8 +190,6 @@ class Transaction:
     ) -> "Transaction":  # pragma: no cover
         if isinstance(tx_input, TxInput):
             self.inputs.append(tx_input)
-        elif isinstance(tx_input, Unspent):
-            self.inputs.append(TxInput(tx_input))
         else:
             raise TypeError("unsupported transaction input type")
         return self
