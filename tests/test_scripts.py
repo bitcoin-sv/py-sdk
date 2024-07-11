@@ -5,7 +5,7 @@ from bsv.keys import PrivateKey
 from bsv.script.script import Script
 from bsv.script.type import P2PKH, OpReturn, P2PK, BareMultisig
 from bsv.utils import address_to_public_key_hash, encode_pushdata, encode_int
-from bsv.transaction import Transaction, TxInput, TxOutput
+from bsv.transaction import Transaction, TransactionInput, TransactionOutput
 
 
 def test_script():
@@ -41,14 +41,14 @@ def test_p2pkh():
     source_tx = Transaction(
         [],
         [
-            TxOutput(
+            TransactionOutput(
                 locking_script=Script(locking_script),
                 value=1000
             )
         ]
     )
     tx = Transaction([
-       TxInput(
+       TransactionInput(
            source_transaction=source_tx,
            source_output_index=0,
            unlocking_script_template=P2PKH().unlocking(key_compressed)
@@ -85,14 +85,14 @@ def test_p2pk():
     source_tx = Transaction(
         [],
         [
-            TxOutput(
+            TransactionOutput(
                 locking_script=P2PK().locking(public_key.hex()),
                 value=1000
             )
         ]
     )
     tx = Transaction([
-       TxInput(
+       TransactionInput(
            source_transaction=source_tx,
            source_output_index=0,
            unlocking_script_template=P2PK().unlocking(private_key)
@@ -115,14 +115,14 @@ def test_bare_multisig():
     source_tx = Transaction(
         [],
         [
-            TxOutput(
+            TransactionOutput(
                 locking_script=BareMultisig().locking(pubs, 2),
                 value=1000
             )
         ]
     )
     tx = Transaction([
-       TxInput(
+       TransactionInput(
            source_transaction=source_tx,
            source_output_index=0,
            unlocking_script_template=BareMultisig().unlocking(privs)

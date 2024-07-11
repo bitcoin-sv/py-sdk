@@ -1,4 +1,4 @@
-from bsv import Wallet, Transaction, TxInput, PrivateKey
+from bsv import Wallet, Transaction, TransactionInput, PrivateKey
 from bsv.constants import SIGHASH
 
 private_key = PrivateKey('cVwfreZB3i8iv9JpdSStd9PWhZZGGJCFLS4rEKWfbkahibwhticA')
@@ -6,7 +6,7 @@ network = private_key.network
 unspents = Wallet(keys=[private_key], network=network).get_unspents(refresh=True)
 
 t = Transaction(network=network)
-t.add_input(TxInput(unspents[0], sighash=SIGHASH.NONE_ANYONECANPAY_FORKID))
+t.add_input(TransactionInput(unspents[0], sighash=SIGHASH.NONE_ANYONECANPAY_FORKID))
 t.sign()
 
 unlocking_script = t.inputs[0].unlocking_script.hex()

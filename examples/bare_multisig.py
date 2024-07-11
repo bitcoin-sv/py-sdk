@@ -1,7 +1,7 @@
 import time
 from typing import List, Union
 
-from bsv import PrivateKey, Unspent, Transaction, TxOutput
+from bsv import PrivateKey, Unspent, Transaction, TransactionOutput
 from bsv.constants import Network
 from bsv.script import BareMultisig, Script
 
@@ -15,7 +15,7 @@ unspents = Unspent.get_unspents(network=network, private_keys=[k1])
 # a 2-of-3 multi-sig output
 public_keys: List[Union[str, bytes]] = [k1.public_key().hex(), PrivateKey().public_key().hex(), k2.public_key().serialize()]
 multisig_script: Script = BareMultisig.locking(public_keys, 2)
-output = TxOutput(out=multisig_script, value=1000, script_template=BareMultisig())
+output = TransactionOutput(out=multisig_script, value=1000, script_template=BareMultisig())
 
 # create multi-sig output
 t = Transaction(network=network).add_inputs(unspents).add_output(output).add_change().sign()

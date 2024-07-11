@@ -26,7 +26,8 @@ from .script.unlocking_template import UnlockingScriptTemplate
 class InsufficientFunds(ValueError):
     pass
 
-class TxInput:
+
+class TransactionInput:
 
     def __init__(
         self,
@@ -76,7 +77,7 @@ class TxInput:
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TxInput"]:
+    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TransactionInput"]:
         with suppress(Exception):
             stream = (
                 stream
@@ -95,7 +96,7 @@ class TxInput:
             sequence = stream.read_int(4)
             assert sequence is not None
             
-            return TxInput(
+            return TransactionInput(
                 source_txid=txid.hex(),
                 source_output_index=vout,
                 unlocking_script=Script(unlocking_script_bytes),
@@ -105,8 +106,8 @@ class TxInput:
         return None
 
 
-class TxOutput:
-    
+class TransactionOutput:
+
     def __init__(
         self,
         locking_script: Script,
@@ -133,7 +134,7 @@ class TxOutput:
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TxOutput"]:
+    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TransactionOutput"]:
         with suppress(Exception):
             stream = (
                 stream
@@ -147,7 +148,7 @@ class TxOutput:
             script_length = stream.read_var_int_num()
             assert script_length is not None
             locking_script_bytes = stream.read_bytes(script_length)
-            return TxOutput(locking_script=Script(locking_script_bytes), value=value)
+            return TransactionOutput(locking_script=Script(locking_script_bytes), value=value)
         return None
 
 
@@ -155,16 +156,16 @@ class Transaction:
 
     def __init__(
         self,
-        tx_inputs: Optional[List[TxInput]] = None,
-        tx_outputs: Optional[List[TxOutput]] = None,
+        tx_inputs: Optional[List[TransactionInput]] = None,
+        tx_outputs: Optional[List[TransactionOutput]] = None,
         version: int = TRANSACTION_VERSION,
         locktime: int = TRANSACTION_LOCKTIME,
         merkle_path: Optional[MerklePath] = None,
         fee_rate: Optional[float] = None,
         **kwargs,
     ):
-        self.inputs: List[TxInput] = tx_inputs or []
-        self.outputs: List[TxOutput] = tx_outputs or []
+        self.inputs: List[TransactionInput] = tx_inputs or []
+        self.outputs: List[TransactionOutput] = tx_outputs or []
         self.version: int = version
         self.locktime: int = locktime
         self.merkle_path = merkle_path
@@ -186,24 +187,24 @@ class Transaction:
         return raw
 
     def add_input(
-        self, tx_input: TxInput
+        self, tx_input: TransactionInput
     ) -> "Transaction":  # pragma: no cover
-        if isinstance(tx_input, TxInput):
+        if isinstance(tx_input, TransactionInput):
             self.inputs.append(tx_input)
         else:
             raise TypeError("unsupported transaction input type")
         return self
 
-    def add_inputs(self, tx_inputs: List[TxInput]) -> "Transaction":
+    def add_inputs(self, tx_inputs: List[TransactionInput]) -> "Transaction":
         for tx_input in tx_inputs:
             self.add_input(tx_input)
         return self
 
-    def add_output(self, tx_output: TxOutput) -> "Transaction":  # pragma: no cover
+    def add_output(self, tx_output: TransactionOutput) -> "Transaction":  # pragma: no cover
         self.outputs.append(tx_output)
         return self
 
-    def add_outputs(self, tx_outputs: List[TxOutput]) -> "Transaction":
+    def add_outputs(self, tx_outputs: List[TransactionOutput]) -> "Transaction":
         for tx_output in tx_outputs:
             self.add_output(tx_output)
         return self
@@ -221,7 +222,7 @@ class Transaction:
 
     def _digest(
         self,
-        tx_input: TxInput,
+        tx_input: TransactionInput,
         hash_prevouts: bytes,
         hash_sequence: bytes,
         hash_outputs: bytes,
@@ -404,7 +405,7 @@ class Transaction:
         )
         fee_overpaid = self.fee() - fee_expected
         if fee_overpaid > 0:  # pragma: no cover
-            change_output = TxOutput(
+            change_output = TransactionOutput(
                 locking_script=P2PKH().locking(change_address), 
                 value=fee_overpaid
             )
@@ -539,13 +540,13 @@ class Transaction:
         inputs_count = reader.read_var_int_num()
         assert inputs_count is not None
         for _ in range(inputs_count):
-            _input = TxInput.from_hex(reader)
+            _input = TransactionInput.from_hex(reader)
             assert _input is not None
             t.inputs.append(_input)
         outputs_count = reader.read_var_int_num()
         assert outputs_count is not None
         for _ in range(outputs_count):
-            _output = TxOutput.from_hex(reader)
+            _output = TransactionOutput.from_hex(reader)
             assert _output is not None
             t.outputs.append(_output)
         t.locktime = reader.read_uint32_le()
