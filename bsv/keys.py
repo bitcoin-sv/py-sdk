@@ -80,7 +80,7 @@ class PublicKey:
         der = serialize_ecdsa_der((r, s))
         return self.verify(der, message, hasher) and self == recover_public_key(signature, message, hasher)
 
-    def ecdh_key(self, key: 'PrivateKey') -> bytes:
+    def derive_shared_secret(self, key: 'PrivateKey') -> bytes:
         return PublicKey(self.key.multiply(key.serialize())).serialize()
 
     def encrypt(self, message: bytes) -> bytes:
@@ -90,7 +90,7 @@ class PublicKey:
         # generate an ephemeral EC private key in order to derive shared secret (ECDH key)
         ephemeral_private_key = PrivateKey()
         # derive ECDH key
-        ecdh_key: bytes = self.ecdh_key(ephemeral_private_key)
+        ecdh_key: bytes = self.derive_shared_secret(ephemeral_private_key)
         # SHA512(ECDH_KEY), then we have
         # key_e and iv used in AES, key_m used in HMAC.SHA256
         key: bytes = hashlib.sha512(ecdh_key).digest()
@@ -118,7 +118,7 @@ class PublicKey:
         :param invoice_number: the invoice number used to derive the child key
         :return: the derived child key
         """
-        shared_key = self.ecdh_key(private_key)
+        shared_key = self.derive_shared_secret(private_key)
         hashing = hmac_sha256(shared_key, invoice_number.encode('utf-8'))
         point = curve_multiply(int.from_bytes(hashing, 'big'), curve.g)
         final_point = curve_add(self.point(), point)
@@ -230,7 +230,7 @@ class PrivateKey:
         message: bytes = text_digest(text)
         return self.address(), stringify_ecdsa_recoverable(self.sign_recoverable(message), self.compressed)
 
-    def ecdh_key(self, key: PublicKey) -> bytes:
+    def derive_shared_secret(self, key: PublicKey) -> bytes:
         return PublicKey(key.key.multiply(self.serialize())).serialize()
 
     def decrypt(self, message: bytes) -> bytes:
@@ -243,7 +243,7 @@ class PrivateKey:
         magic_bytes, ephemeral_public_key, cipher = encrypted[:4], PublicKey(encrypted[4:37]), encrypted[37:]
         assert magic_bytes.decode('utf-8') == 'BIE1', 'invalid magic bytes'
         # restore ECDH key
-        ecdh_key = self.ecdh_key(ephemeral_public_key)
+        ecdh_key = self.derive_shared_secret(ephemeral_public_key)
         # restore iv, key_e, key_m
         key = hashlib.sha512(ecdh_key).digest()
         iv, key_e, key_m = key[0:16], key[16:32], key[32:]
@@ -278,7 +278,7 @@ class PrivateKey:
         :param invoice_number: the invoice number used to derive the child key
         :return: the derived child key
         """
-        shared_key = self.ecdh_key(public_key)
+        shared_key = self.derive_shared_secret(public_key)
         hashing = hmac_sha256(shared_key, invoice_number.encode('utf-8'))
         return PrivateKey((self.int() + int.from_bytes(hashing, 'big')) % curve.n)
 

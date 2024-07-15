@@ -1,0 +1,46 @@
+from typing import Optional, Dict, Any
+import aiohttp
+import asyncio
+
+from ..http_client import HttpClient, default_http_client
+from ..chaintracker import ChainTracker
+
+
+class WhatsOnChainTracker(ChainTracker):
+    def __init__(
+        self,
+        network: str = "main",
+        api_key: Optional[str] = None,
+        http_client: Optional[HttpClient] = None,
+    ):
+        self.network = network
+        self.URL = f"https://api.whatsonchain.com/v1/bsv/{network}"
+        self.http_client = (
+            http_client if http_client else default_http_client
+        )
+        self.api_key = api_key
+
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        request_options = {"method": "GET", "headers": self.get_headers()}
+
+        response = await self.http_client.fetch(
+            f"{self.URL}/block/{height}/header", request_options
+        )
+        if response["ok"]:
+            merkleroot = response["data"]["merkleroot"]
+            return merkleroot == root
+        elif response["status"] == 404:
+            return False
+        else:
+            raise Exception(
+                f"Failed to verify merkleroot for height {height} because of an error: {response['data']}"
+            )
+
+    def get_headers(self) -> Dict[str, str]:
+        headers = {
+            "Accept": "application/json",
+        }
+        if self.api_key:
+            headers["Authorization"] = self.api_key
+        return headers
+
