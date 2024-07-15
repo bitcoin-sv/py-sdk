@@ -1,8 +1,7 @@
 from typing import Union, Optional, List
 
 from bsv.constants import OpCode, OpCodeValueNameDict
-from bsv.utils import encode_pushdata
-from bsv.utils import unsigned_to_varint
+from bsv.utils import encode_pushdata, unsigned_to_varint, Reader
 
 
 class ScriptChunk:
@@ -41,7 +40,26 @@ class Script:
         else:
             raise TypeError('unsupported script type')
         # An array of script chunks that make up the script.
-        self.chunks: [ScriptChunk] = []
+        self.chunks: List[ScriptChunk] = []
+        self._build_chunks()
+
+    def _build_chunks(self):
+        self.chunks = []
+        reader = Reader(self.script)
+        while not reader.eof():
+            op = reader.read_bytes(1)
+            chunk = ScriptChunk(op)
+            data = None
+            if b'\x01' <= op <= b'\x4b':
+                data = reader.read_bytes(int.from_bytes(op, 'big'))
+            elif op == OpCode.OP_PUSHDATA1:
+                data = reader.read_bytes(reader.read_int8())
+            elif op == OpCode.OP_PUSHDATA2:
+                data = reader.read_bytes(reader.read_int16_le())
+            elif op == OpCode.OP_PUSHDATA4:
+                data = reader.read_bytes(reader.read_int32_le())
+            chunk.data = data
+            self.chunks.append(chunk)
 
     def serialize(self) -> bytes:
         return self.script

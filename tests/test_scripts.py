@@ -146,7 +146,14 @@ def test_is_push_only():
     assert Script('50').is_push_only()  # OP_RESERVED
 
 
-def test_asm():
+def test_to_asm():
+    assert Script('000301020300').to_asm() == 'OP_0 010203 OP_0'
+
+    asm = 'OP_DUP OP_HASH160 f4c03610e60ad15100929cc23da2f3a799af1725 OP_EQUALVERIFY OP_CHECKSIG'
+    assert Script('76a914f4c03610e60ad15100929cc23da2f3a799af172588ac').to_asm() == asm
+
+
+def test_from_asm():
     assert Script.from_asm('OP_0 3 010203 OP_0').to_asm() == 'OP_0 03 010203 OP_0'
 
     asms = [
@@ -156,3 +163,28 @@ def test_asm():
     ]
     for asm in asms:
         assert Script.from_asm(asm).to_asm() == asm
+
+    _asm_pushdata(220)
+    _asm_pushdata(1024)
+    _asm_pushdata(pow(2, 17))
+
+    asms = [
+        'OP_FALSE',
+        'OP_0',
+        '0',
+    ]
+    for asm in asms:
+        assert Script.from_asm(asm).to_asm() == 'OP_0'
+
+    asms = [
+        'OP_1NEGATE',
+        '-1',
+    ]
+    for asm in asms:
+        assert Script.from_asm(asm).to_asm() == 'OP_1NEGATE'
+
+
+def _asm_pushdata(byte_length: int):
+    octets = b'\x00' * byte_length
+    asm = 'OP_RETURN ' + octets.hex()
+    assert Script.from_asm(asm).to_asm() == asm
