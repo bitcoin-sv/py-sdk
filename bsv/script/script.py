@@ -1,6 +1,27 @@
-from typing import Union
+from typing import Union, Optional, List
+
+from bsv.constants import OpCode, OpCodeValueNameDict
+from bsv.utils import encode_pushdata
 from bsv.utils import unsigned_to_varint
-from bsv.constants import OpCode
+
+
+class ScriptChunk:
+    """
+    A representation of a chunk of a script, which includes an opcode.
+    For push operations, the associated data to push onto the stack is also included.
+    """
+
+    def __init__(self, op: bytes, data: Optional[bytes] = None):
+        self.op = op
+        self.data = data
+
+    def __str__(self):
+        if self.data is not None:
+            return self.data.hex()
+        return OpCodeValueNameDict[self.op]
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Script:
@@ -19,6 +40,8 @@ class Script:
             self.script: bytes = script
         else:
             raise TypeError('unsupported script type')
+        # An array of script chunks that make up the script.
+        self.chunks: [ScriptChunk] = []
 
     def serialize(self) -> bytes:
         return self.script
@@ -36,6 +59,16 @@ class Script:
 
     size_varint = byte_length_varint
 
+    def is_push_only(self) -> bool:
+        """
+        Checks if the script contains only push data operations.
+        :return: True if the script is push-only, otherwise false.
+        """
+        for item in self.script:
+            if item > int.from_bytes(OpCode.OP_16, 'big'):
+                return False
+        return True
+
     def __eq__(self, o: object) -> bool:
         if isinstance(o, Script):
             return self.script == o.script
@@ -47,64 +80,64 @@ class Script:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def from_asm(self, asm: str):
-        chunks = []
+    @classmethod
+    def from_chunks(cls, chunks: List[ScriptChunk]) -> 'Script':
+        script = b''
+        for chunk in chunks:
+            script += encode_pushdata(chunk.data) if chunk.data is not None else chunk.op
+        s = Script(script)
+        s.chunks = chunks
+        return s
+
+    @classmethod
+    def from_asm(cls, asm: str) -> 'Script':
+        chunks: [ScriptChunk] = []
         tokens = asm.split(' ')
         i = 0
         while i < len(tokens):
             token = tokens[i]
-            op_code = None
-            op_code_num = None
-            if token.startswith('OP_') and token in OpCode.__dict__:
-                op_code = token
-                op_code_num = OpCode.__dict__[token]
+            token = 'OP_0' if token == 'OP_FALSE' else token
+            opcode: Optional[str] = None
+            opcode_value: Optional[bytes] = None
+            if token.startswith('OP_') and token in OpCodeValueNameDict.values():
+                opcode = token
+                opcode_value = OpCode[opcode].value
 
             if token == '0':
-                op_code_num = 0
-                chunks.append({'op': op_code_num})
+                opcode_value = b'\x00'
+                chunks.append(ScriptChunk(opcode_value))
                 i += 1
             elif token == '-1':
-                op_code_num = OpCode.OP_1NEGATE
-                chunks.append({'op': op_code_num})
+                opcode_value = OpCode.OP_1NEGATE
+                chunks.append(ScriptChunk(opcode_value))
                 i += 1
-            elif op_code is None:
-                hex_str = tokens[i]
-                if len(hex_str) % 2 != 0:
-                    hex_str = '0' + hex_str
-                arr = bytearray.fromhex(hex_str)
-                if arr.hex() != hex_str:
-                    raise ValueError('Invalid hex string in script')
-                length = len(arr)
-                if 0 <= length < OpCode.OP_PUSHDATA1:
-                    op_code_num = length
-                elif length < 2 ** 8:
-                    op_code_num = OpCode.OP_PUSHDATA1
-                elif length < 2 ** 16:
-                    op_code_num = OpCode.OP_PUSHDATA2
-                elif length < 2 ** 32:
-                    op_code_num = OpCode.OP_PUSHDATA4
-                chunks.append({'data': arr, 'op': op_code_num})
-                i += 1
-            elif op_code_num in [OpCode.OP_PUSHDATA1, OpCode.OP_PUSHDATA2, OpCode.OP_PUSHDATA4]:
-                chunks.append({'data': bytearray.fromhex(tokens[i + 2]), 'op': op_code_num})
+            elif opcode is None:
+                hex_string = tokens[i]
+                if len(hex_string) % 2 != 0:
+                    hex_string = '0' + hex_string
+                hex_bytes = bytes.fromhex(hex_string)
+                if hex_bytes.hex() != hex_string:
+                    raise ValueError('invalid hex string in script')
+                hex_len = len(hex_bytes)
+                if 0 <= hex_len < int.from_bytes(OpCode.OP_PUSHDATA1, 'big'):
+                    opcode_value = int.to_bytes(hex_len, 1, 'big')
+                elif hex_len < pow(2, 8):
+                    opcode_value = OpCode.OP_PUSHDATA1
+                elif hex_len < pow(2, 16):
+                    opcode_value = OpCode.OP_PUSHDATA2
+                elif hex_len < pow(2, 32):
+                    opcode_value = OpCode.OP_PUSHDATA4
+                chunks.append(ScriptChunk(opcode_value, hex_bytes))
+                i = i + 1
+            elif opcode_value == OpCode.OP_PUSHDATA1 \
+                    or opcode_value == OpCode.OP_PUSHDATA2 \
+                    or opcode_value == OpCode.OP_PUSHDATA4:
+                chunks.append(ScriptChunk(opcode_value, bytes.fromhex(tokens[i + 2])))
                 i += 3
             else:
-                chunks.append({'op': op_code_num})
+                chunks.append(ScriptChunk(opcode_value))
                 i += 1
-        self.script = chunks
+        return Script.from_chunks(chunks)
 
-    def to_asm(self):
-        asm_str = ''
-        for chunk in self.script:
-            asm_str += self._chunk_to_string(chunk)
-
-        return asm_str[1:]
-
-    def _chunk_to_string(self, chunk) -> str:
-        if 'op' in chunk:
-            for name, code in OpCode.__dict__.items():
-                if chunk['op'] == code:
-                    return ' ' + name
-        if 'data' in chunk:
-            return ' ' + chunk['data'].hex()
-        return ' unknown'
+    def to_asm(self) -> str:
+        return ' '.join(str(chunk) for chunk in self.chunks)

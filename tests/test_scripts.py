@@ -1,11 +1,11 @@
 import pytest
 
-from bsv.constants import SIGHASH, OpCode
+from bsv.constants import OpCode
 from bsv.keys import PrivateKey
 from bsv.script.script import Script
 from bsv.script.type import P2PKH, OpReturn, P2PK, BareMultisig
-from bsv.utils import address_to_public_key_hash, encode_pushdata, encode_int
 from bsv.transaction import Transaction, TransactionInput, TransactionOutput
+from bsv.utils import address_to_public_key_hash, encode_pushdata, encode_int
 
 
 def test_script():
@@ -37,7 +37,7 @@ def test_p2pkh():
     key_uncompressed = PrivateKey('5KiANv9EHEU4o9oLzZ6A7z4xJJ3uvfK2RLEubBtTz1fSwAbpJ2U')
     assert P2PKH().unlocking(key_compressed).estimated_unlocking_byte_length() == 107
     assert P2PKH().unlocking(key_uncompressed).estimated_unlocking_byte_length() == 139
-    
+
     source_tx = Transaction(
         [],
         [
@@ -48,14 +48,14 @@ def test_p2pkh():
         ]
     )
     tx = Transaction([
-       TransactionInput(
-           source_transaction=source_tx,
-           source_output_index=0,
-           unlocking_script_template=P2PKH().unlocking(key_compressed)
-       )
+        TransactionInput(
+            source_transaction=source_tx,
+            source_output_index=0,
+            unlocking_script_template=P2PKH().unlocking(key_compressed)
+        )
     ], [])
     tx.add_change(address)
-    
+
     unlocking_script = P2PKH().unlocking(key_compressed).sign(tx, 0)
     assert isinstance(unlocking_script, Script)
     assert unlocking_script.byte_length() in [106, 107]
@@ -92,14 +92,14 @@ def test_p2pk():
         ]
     )
     tx = Transaction([
-       TransactionInput(
-           source_transaction=source_tx,
-           source_output_index=0,
-           unlocking_script_template=P2PK().unlocking(private_key)
-       )
+        TransactionInput(
+            source_transaction=source_tx,
+            source_output_index=0,
+            unlocking_script_template=P2PK().unlocking(private_key)
+        )
     ], [])
     tx.add_change(public_key.address())
-    
+
     unlocking_script = P2PK().unlocking(private_key).sign(tx, 0)
     assert isinstance(unlocking_script, Script)
     assert unlocking_script.byte_length() in [72, 73]
@@ -107,11 +107,12 @@ def test_p2pk():
 
 def test_bare_multisig():
     privs = [PrivateKey(), PrivateKey(), PrivateKey()]
-    pubs = [privs[0].public_key().hex(), privs[1].public_key().serialize(compressed=False), privs[2].public_key().serialize()]
+    pubs = [privs[0].public_key().hex(), privs[1].public_key().serialize(compressed=False),
+            privs[2].public_key().serialize()]
     encoded_pks = b''.join([encode_pushdata(pk if isinstance(pk, bytes) else bytes.fromhex(pk)) for pk in pubs])
     expected_locking = encode_int(2) + encoded_pks + encode_int(3) + OpCode.OP_CHECKMULTISIG
     assert BareMultisig().locking(pubs, 2).serialize() == expected_locking
-    
+
     source_tx = Transaction(
         [],
         [
@@ -122,15 +123,36 @@ def test_bare_multisig():
         ]
     )
     tx = Transaction([
-       TransactionInput(
-           source_transaction=source_tx,
-           source_output_index=0,
-           unlocking_script_template=BareMultisig().unlocking(privs)
-       )
+        TransactionInput(
+            source_transaction=source_tx,
+            source_output_index=0,
+            unlocking_script_template=BareMultisig().unlocking(privs)
+        )
     ], [])
     tx.add_change('1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9')
-    
+
     unlocking_script = BareMultisig().unlocking(privs).sign(tx, 0)
     assert isinstance(unlocking_script, Script)
     print(unlocking_script.byte_length())
     assert unlocking_script.byte_length() > 210
+
+
+def test_is_push_only():
+    assert Script('00').is_push_only()  # OP_0
+    assert not Script('006a').is_push_only()  # OP_0 OP_RETURN
+    assert Script('4c051010101010').is_push_only()
+
+    # like bitcoind, we regard OP_RESERVED as being "push only"
+    assert Script('50').is_push_only()  # OP_RESERVED
+
+
+def test_asm():
+    assert Script.from_asm('OP_0 3 010203 OP_0').to_asm() == 'OP_0 03 010203 OP_0'
+
+    asms = [
+        '',
+        'OP_0 010203 OP_0',
+        'OP_SHA256 8cc17e2a2b10e1da145488458a6edec4a1fdb1921c2d5ccbc96aa0ed31b4d5f8 OP_EQUALVERIFY',
+    ]
+    for asm in asms:
+        assert Script.from_asm(asm).to_asm() == asm
