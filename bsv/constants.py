@@ -127,8 +127,8 @@ class OpCode(bytes, Enum):
     """
     https://wiki.bitcoinsv.io/index.php/Opcodes_used_in_Bitcoin_Script
     """
-    OP_FALSE = b'\x00'
     OP_0 = b'\x00'
+    OP_FALSE = b'\x00'
     OP_PUSHDATA1 = b'\x4c'
     OP_PUSHDATA2 = b'\x4d'
     OP_PUSHDATA4 = b'\x4e'
@@ -233,16 +233,13 @@ class OpCode(bytes, Enum):
     OP_CHECKSIGVERIFY = b'\xad'
     OP_CHECKMULTISIG = b'\xae'
     OP_CHECKMULTISIGVERIFY = b'\xaf'
-    # used NOP opcode identifiers
-    OP_NOP2 = b'\xb1'
-    OP_CHECKLOCKTIMEVERIFY = b'\xb1'
-    OP_NOP3 = b'\xb2'
-    OP_CHECKSEQUENCEVERIFY = b'\xb2'
     # reserved words
     OP_RESERVED = b'\x50'
     OP_RESERVED1 = b'\x89'
     OP_RESERVED2 = b'\x8a'
     OP_NOP1 = b'\xb0'
+    OP_NOP2 = b'\xb1'
+    OP_NOP3 = b'\xb2'
     OP_NOP4 = b'\xb3'
     OP_NOP5 = b'\xb4'
     OP_NOP6 = b'\xb5'
@@ -250,3 +247,6 @@ class OpCode(bytes, Enum):
     OP_NOP8 = b'\xb7'
     OP_NOP9 = b'\xb8'
     OP_NOP10 = b'\xb9'
+
+
+OpCodeValueNameDict: Dict[bytes, str] = {item.value: item.name for item in OpCode}

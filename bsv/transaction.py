@@ -1,7 +1,7 @@
 import math
 from contextlib import suppress
 from io import BytesIO
-from typing import List, Optional, Union, Dict, Any, Literal
+from typing import List, Optional, Union, Dict, Any, Literal, Tuple, Callable
 
 from .constants import SIGHASH, Network
 from .constants import (
@@ -13,41 +13,45 @@ from .constants import (
 from .hash import hash256
 from .keys import PrivateKey
 from .script.script import Script
-from .script.type import ScriptType, P2PKH, OpReturn, Unknown
-from .service.provider import Provider, BroadcastResult
-from .service import Service
-from .unspent import Unspent
+from .script.type import ScriptTemplate, P2PKH, OpReturn, Unknown
+from .broadcaster import Broadcaster, BroadcastResponse
+from .broadcasters import default_broadcaster
+from .chaintracker import ChainTracker
+from .chaintrackers import default_chain_tracker
 from .utils import unsigned_to_varint, Reader, Writer
 from .merkle_path import MerklePath
+from .script.unlocking_template import UnlockingScriptTemplate
 
 
 class InsufficientFunds(ValueError):
     pass
 
-class TxInput:
+
+class TransactionInput:
 
     def __init__(
         self,
-        unspent: Optional[Unspent] = None,
-        private_keys: Optional[List[PrivateKey]] = None,
+        source_transaction = None,
+        source_txid: Optional[str] = None,
+        source_output_index: int = 0,
         unlocking_script: Optional[Script] = None,
+        unlocking_script_template: UnlockingScriptTemplate = None,
         sequence: int = TRANSACTION_SEQUENCE,
         sighash: SIGHASH = SIGHASH.ALL_FORKID,
     ):
-        self.txid: str = unspent.txid if unspent else ("00" * 32)
-        self.vout: int = unspent.vout if unspent else 0
-        self.value: int = unspent.value if unspent else 0
-        self.height: int = unspent.height if unspent else -1
-        self.confirmations: int = unspent.confirmations if unspent else 0
-        self.private_keys: List[PrivateKey] = private_keys or (
-            unspent.private_keys if unspent else []
-        )
-        self.script_type: ScriptType = unspent.script_type if unspent else Unknown
-        self.locking_script: Script = unspent.locking_script if unspent else Script()
+        utxo = None
+        if source_transaction:
+            utxo = source_transaction.outputs[source_output_index]
+
+        self.txid: str = source_txid if source_txid else '00' * 32
+        self.vout: int = source_output_index
+        self.value: int = utxo.value if utxo else None
+        self.locking_script: Script = utxo.locking_script if utxo else None
         
-        self.source_transaction = None
+        self.source_transaction = source_transaction
 
         self.unlocking_script: Script = unlocking_script
+        self.unlocking_script_template = unlocking_script_template
         self.sequence: int = sequence
         self.sighash: SIGHASH = sighash
 
@@ -67,13 +71,13 @@ class TxInput:
         return stream.getvalue()
 
     def __str__(self) -> str:  # pragma: no cover
-        return f"<TxInput outpoint={self.txid}:{self.vout} value={self.value} locking_script={self.locking_script}>"
+        return f"<TransactionInput outpoint={self.txid}:{self.vout} value={self.value} locking_script={self.locking_script}>"
 
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TxInput"]:
+    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TransactionInput"]:
         with suppress(Exception):
             stream = (
                 stream
@@ -91,40 +95,26 @@ class TxInput:
             unlocking_script_bytes = stream.read_bytes(script_length)
             sequence = stream.read_int(4)
             assert sequence is not None
-            unspent = Unspent(
-                txid=txid.hex(), vout=vout, value=0, locking_script=Script()
-            )
-            return TxInput(
-                unspent=unspent,
+            
+            return TransactionInput(
+                source_txid=txid.hex(),
+                source_output_index=vout,
                 unlocking_script=Script(unlocking_script_bytes),
                 sequence=sequence,
             )
+
         return None
 
 
-class TxOutput:
+class TransactionOutput:
 
     def __init__(
         self,
-        out: Union[str, List[Union[str, bytes]], Script],
+        locking_script: Script,
         value: int = 0,
-        script_type: ScriptType = Unknown(),
     ):
         self.value = value
-        if isinstance(out, str):
-            # from address
-            self.locking_script: Script = P2PKH.locking(out)
-            self.script_type: ScriptType = P2PKH()
-        elif isinstance(out, List):
-            # from list of pushdata
-            self.locking_script: Script = OpReturn.locking(out)
-            self.script_type: ScriptType = OpReturn()
-        elif isinstance(out, Script):
-            # from locking script
-            self.locking_script: Script = out
-            self.script_type: ScriptType = script_type
-        else:
-            raise TypeError("unsupported transaction output type")
+        self.locking_script = locking_script
 
     def serialize(self) -> bytes:
         return b"".join(
@@ -144,7 +134,7 @@ class TxOutput:
         return self.__str__()
 
     @classmethod
-    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TxOutput"]:
+    def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["TransactionOutput"]:
         with suppress(Exception):
             stream = (
                 stream
@@ -158,7 +148,7 @@ class TxOutput:
             script_length = stream.read_var_int_num()
             assert script_length is not None
             locking_script_bytes = stream.read_bytes(script_length)
-            return TxOutput(out=Script(locking_script_bytes), value=value)
+            return TransactionOutput(locking_script=Script(locking_script_bytes), value=value)
         return None
 
 
@@ -166,29 +156,22 @@ class Transaction:
 
     def __init__(
         self,
-        tx_inputs: Optional[List[TxInput]] = None,
-        tx_outputs: Optional[List[TxOutput]] = None,
+        tx_inputs: Optional[List[TransactionInput]] = None,
+        tx_outputs: Optional[List[TransactionOutput]] = None,
         version: int = TRANSACTION_VERSION,
         locktime: int = TRANSACTION_LOCKTIME,
         merkle_path: Optional[MerklePath] = None,
         fee_rate: Optional[float] = None,
-        network: Optional[Network] = None,
-        provider: Optional[Provider] = None,
         **kwargs,
     ):
-        self.inputs: List[TxInput] = tx_inputs or []
-        self.outputs: List[TxOutput] = tx_outputs or []
+        self.inputs: List[TransactionInput] = tx_inputs or []
+        self.outputs: List[TransactionOutput] = tx_outputs or []
         self.version: int = version
         self.locktime: int = locktime
         self.merkle_path = merkle_path
         self.fee_rate: float = (
             fee_rate if fee_rate is not None else TRANSACTION_FEE_RATE
         )
-
-        self.network: Network = network
-        self.provider: Provider = provider
-        if self.provider:
-            self.network = self.provider.network
 
         self.kwargs: Dict[str, Any] = dict(**kwargs) or {}
 
@@ -204,26 +187,24 @@ class Transaction:
         return raw
 
     def add_input(
-        self, tx_input: Union[TxInput, Unspent]
+        self, tx_input: TransactionInput
     ) -> "Transaction":  # pragma: no cover
-        if isinstance(tx_input, TxInput):
+        if isinstance(tx_input, TransactionInput):
             self.inputs.append(tx_input)
-        elif isinstance(tx_input, Unspent):
-            self.inputs.append(TxInput(tx_input))
         else:
             raise TypeError("unsupported transaction input type")
         return self
 
-    def add_inputs(self, tx_inputs: List[Union[TxInput, Unspent]]) -> "Transaction":
+    def add_inputs(self, tx_inputs: List[TransactionInput]) -> "Transaction":
         for tx_input in tx_inputs:
             self.add_input(tx_input)
         return self
 
-    def add_output(self, tx_output: TxOutput) -> "Transaction":  # pragma: no cover
+    def add_output(self, tx_output: TransactionOutput) -> "Transaction":  # pragma: no cover
         self.outputs.append(tx_output)
         return self
 
-    def add_outputs(self, tx_outputs: List[TxOutput]) -> "Transaction":
+    def add_outputs(self, tx_outputs: List[TransactionOutput]) -> "Transaction":
         for tx_output in tx_outputs:
             self.add_output(tx_output)
         return self
@@ -241,7 +222,7 @@ class Transaction:
 
     def _digest(
         self,
-        tx_input: TxInput,
+        tx_input: TransactionInput,
         hash_prevouts: bytes,
         hash_sequence: bytes,
         hash_outputs: bytes,
@@ -347,21 +328,11 @@ class Transaction:
         :bypass: if True then ONLY sign inputs which unlocking script is None, otherwise sign all the inputs
         sign all inputs according to their script type
         """
-        digests = self.digests()
         for i in range(len(self.inputs)):
             tx_input = self.inputs[i]
             if tx_input.unlocking_script is None or not bypass:
-                signatures: List[bytes] = [
-                    private_key.sign(digests[i])
-                    for private_key in tx_input.private_keys
-                ]
-                payload = {
-                    "signatures": signatures,
-                    "private_keys": tx_input.private_keys,
-                    "sighash": tx_input.sighash,
-                }
-                tx_input.unlocking_script = tx_input.script_type.unlocking(
-                    **payload, **{**self.kwargs, **kwargs}
+                tx_input.unlocking_script = tx_input.unlocking_script_template.sign(
+                    self, i
                 )
         return self
 
@@ -403,9 +374,7 @@ class Transaction:
             else:
                 estimated_length += (
                     41
-                    + tx_input.script_type.estimated_unlocking_byte_length(
-                        private_keys=tx_input.private_keys, **{**self.kwargs, **kwargs}
-                    )
+                    + tx_input.unlocking_script_template.estimated_unlocking_byte_length()
                 )
         for tx_output in self.outputs:
             estimated_length += (
@@ -423,7 +392,7 @@ class Transaction:
         """
         return math.ceil(self.fee_rate * self.estimated_byte_length())
 
-    def add_change(self, change_address: Optional[str] = None) -> "Transaction":
+    def add_change(self, change_address: str) -> "Transaction":
         # byte length increased after adding a P2PKH change output
         size_increased = (
             34
@@ -436,58 +405,20 @@ class Transaction:
         )
         fee_overpaid = self.fee() - fee_expected
         if fee_overpaid > 0:  # pragma: no cover
-            change_output: Optional[TxOutput] = None
-            if not change_address:
-                for tx_input in self.inputs:
-                    if tx_input.script_type == P2PKH():
-                        change_output = TxOutput(
-                            out=tx_input.locking_script,
-                            value=fee_overpaid,
-                            script_type=P2PKH(),
-                        )
-                        break
-            else:
-                change_output = TxOutput(out=change_address, value=fee_overpaid)
-            assert change_output, "can't parse any address from transaction inputs"
+            change_output = TransactionOutput(
+                locking_script=P2PKH().locking(change_address), 
+                value=fee_overpaid
+            )
             self.add_output(change_output)
         return self
 
-    def broadcast(self, check_fee: bool = True) -> BroadcastResult:  # pragma: no cover
+    def broadcast(self, broadcaster: Broadcaster = default_broadcaster(), check_fee: bool = True) -> BroadcastResponse:  # pragma: no cover
         fee_expected = self.estimated_fee()
         if check_fee and self.fee() < fee_expected:
             raise InsufficientFunds(
                 f"require {self.total_value_out() + fee_expected} satoshi but only {self.total_value_in()}"
             )
-        return Service(self.network, self.provider).broadcast(self.hex())
-
-    def to_unspent(self, vout: int, **kwargs) -> Optional[Unspent]:
-        assert 0 <= vout < len(self.outputs), "vout out of range"
-        out = self.outputs[vout]
-        if out.script_type in [OpReturn()]:
-            return None
-        return Unspent(
-            txid=self.txid(),
-            vout=vout,
-            value=out.value,
-            script_type=out.script_type,
-            locking_script=out.locking_script,
-            **kwargs,
-        )
-
-    def to_unspents(
-        self, vouts: Optional[List[int]] = None, args: Optional[List[Dict]] = None
-    ) -> List[Unspent]:
-        """
-        parse all the outputs to unspents if vouts is None or empty, OP_RETURN outputs will be omitted
-        """
-        vouts = vouts or range(len(self.outputs))
-        unspents = []
-        for i in range(len(vouts)):
-            arg = args[i] if args and 0 <= i < len(args) else {}
-            unspent = self.to_unspent(vouts[i], **arg)
-            if unspent:
-                unspents.append(unspent)
-        return unspents
+        return broadcaster.broadcast(self.raw())
 
     @classmethod
     def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["Transaction"]:
@@ -639,25 +570,22 @@ class Transaction:
         inputs_count = reader.read_var_int_num()
         assert inputs_count is not None
         for _ in range(inputs_count):
-            _input = TxInput.from_hex(reader)
+            _input = TransactionInput.from_hex(reader)
             assert _input is not None
             t.inputs.append(_input)
         outputs_count = reader.read_var_int_num()
         assert outputs_count is not None
         for _ in range(outputs_count):
-            _output = TxOutput.from_hex(reader)
+            _output = TransactionOutput.from_hex(reader)
             assert _output is not None
             t.outputs.append(_output)
-        t.lock_time = reader.read_uint32_le()
-        assert t.lock_time is not None
+        t.locktime = reader.read_uint32_le()
+        assert t.locktime is not None
         return t
     
-    def verify(self, service: Optional[Service] = None, scripts_only = False) -> bool:
-        if service is None:
-            service = Service()
-
+    async def verify(self, chaintracker: Optional[ChainTracker] = default_chain_tracker(), scripts_only = False) -> bool:
         if isinstance(self.merkle_path, object) and not scripts_only:
-            proof_valid = self.merkle_path.verify(self.txid(), service)
+            proof_valid = self.merkle_path.verify(self.txid(), chaintracker)
             if proof_valid:
                 return True
             
@@ -668,12 +596,10 @@ class Transaction:
             if not tx_input.get('unlocking_script', False):
                 raise ValueError(f"Verification failed because the input at index {i} of transaction {self.txid()} is missing an associated unlocking script. This script is required for transaction verification because there is no merkle proof for the transaction spending the UTXO.")
             
-            # TODO: Is the whole source transaction really needed here?
-            
             source_output = tx_input.source_transaction.outputs[tx_input.vout]
             input_total += source_output.satoshis
 
-            input_verified = tx_input.source_transaction.verify(service)
+            input_verified = tx_input.source_transaction.verify(chaintracker)
             if not input_verified:
                 return False
 
@@ -703,3 +629,44 @@ class Transaction:
             output_total += out.satoshis
 
         return output_total <= input_total
+    
+    @classmethod
+    def parse_script_offsets(cls, bin: Union[bytes, str]) -> Dict[str, List[Dict[str, int]]]:
+        """
+        Since the validation of blockchain data is atomically transaction data validation,
+        any application seeking to validate data in output scripts must store the entire transaction as well.
+        Since the transaction data includes the output script data, saving a second copy of potentially
+        large scripts can bloat application storage requirements.
+
+        This function efficiently parses binary transaction data to determine the offsets and lengths of each script.
+        This supports the efficient retrieval of script data from transaction data.
+
+        @param bin: binary transaction data or hex string
+        @returns: {
+            inputs: { vin: number, offset: number, length: number }[]
+            outputs: { vout: number, offset: number, length: number }[]
+        }
+        """
+        if isinstance(bin, str):
+            bin = bytes.fromhex(bin)
+        
+        br = Reader(bin)
+        inputs: List[Dict[str, int]] = []
+        outputs: List[Dict[str, int]] = []
+
+        br.read(4) # skip version
+        inputs_length = br.read_var_int_num()
+        for i in range(inputs_length):
+            br.read(36) # skip txid and vout
+            script_length = br.read_var_int_num()
+            inputs.append({'vin': i, 'offset': br.tell(), 'length': script_length})
+            br.read(script_length + 4) # script and sequence
+
+        outputs_length = br.read_var_int_num()
+        for i in range(outputs_length):
+            br.read(8)
+            script_length = br.read_var_int_num()
+            outputs.append({'vout': i, 'offset': br.tell(), 'length': script_length})
+            br.read(script_length)  # skip script
+
+        return {'inputs': inputs, 'outputs': outputs}

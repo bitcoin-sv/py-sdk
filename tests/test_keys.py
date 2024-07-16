@@ -135,9 +135,9 @@ def test_sign():
 
 def test_ecdh():
     alice, bob = PrivateKey(), PrivateKey()
-    assert alice.ecdh_key(bob.public_key()) == bob.ecdh_key(alice.public_key())
+    assert alice.derive_shared_secret(bob.public_key()) == bob.derive_shared_secret(alice.public_key())
     ephemeral = PrivateKey()
-    assert alice.public_key().ecdh_key(ephemeral) == alice.ecdh_key(ephemeral.public_key())
+    assert alice.public_key().derive_shared_secret(ephemeral) == alice.derive_shared_secret(ephemeral.public_key())
 
 
 def test_encryption():

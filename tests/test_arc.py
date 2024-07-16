@@ -1,26 +1,33 @@
 import unittest
 from unittest.mock import AsyncMock, MagicMock
-from bsv.arc import ARC, BroadcastResponse, BroadcastFailure, Transaction, HttpResponse, HttpClient
+from bsv.broadcaster import Broadcaster, BroadcastResponse, BroadcastFailure
+from bsv.http_client import HttpClient, HttpResponse
+from bsv.broadcasters.arc import ARC, ARCConfig
+from bsv.transaction import Transaction
 
 class TestARCBroadcast(unittest.IsolatedAsyncioTestCase):
+    
 
     def setUp(self):
         self.URL = "https://api.taal.com"
-        self.apiKey = "apikey_85678993923y454i4jhd803wsd02"
+        self.api_key = "apikey_85678993923y454i4jhd803wsd02"
         self.tx = Transaction(tx_data="Hello sCrypt")
-
+        
         # Mocking the Transaction methods
-        self.tx.to_hex_ef = MagicMock(return_value="hexEFFormat")
-        self.tx.to_hex = MagicMock(return_value="hexFormat")
+        self.tx.hex = MagicMock(return_value="hexFormat")
 
     async def test_broadcast_success(self):
         mock_response = HttpResponse(ok=True, status_code=200, json_data={"txid": "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec", "txStatus": "success", "extraInfo": "extra"})
         mock_http_client = AsyncMock(HttpClient)
         mock_http_client.fetch = AsyncMock(return_value=mock_response)
 
-        arc = ARC(self.URL, self.apiKey, mock_http_client)
-        result = await arc.broadcast(self.tx)
-
+        arc_config = ARCConfig(
+            api_key=self.api_key,
+            http_client=mock_http_client
+        )
+        arc = ARC(self.URL, arc_config)
+        result = await arc.broadcast(self.tx.hex())
+        
         self.assertIsInstance(result, BroadcastResponse)
         self.assertEqual(result.txid, "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec")
         self.assertEqual(result.message, "success extra")
@@ -30,8 +37,12 @@ class TestARCBroadcast(unittest.IsolatedAsyncioTestCase):
         mock_http_client = AsyncMock(HttpClient)
         mock_http_client.fetch = AsyncMock(return_value=mock_response)
 
-        arc = ARC(self.URL, self.apiKey, mock_http_client)
-        result = await arc.broadcast(self.tx)
+        arc_config = ARCConfig(
+            api_key=self.api_key,
+            http_client=mock_http_client
+        )
+        arc = ARC(self.URL, arc_config)
+        result = await arc.broadcast(self.tx.hex())
 
         self.assertIsInstance(result, BroadcastFailure)
         self.assertEqual(result.code, "ERR_BAD_REQUEST")
@@ -41,28 +52,16 @@ class TestARCBroadcast(unittest.IsolatedAsyncioTestCase):
         mock_http_client = AsyncMock(HttpClient)
         mock_http_client.fetch = AsyncMock(side_effect=Exception("Internal Error"))
 
-        arc = ARC(self.URL, self.apiKey, mock_http_client)
-        result = await arc.broadcast(self.tx)
+        arc_config = ARCConfig(
+            api_key=self.api_key,
+            http_client=mock_http_client
+        )
+        arc = ARC(self.URL, arc_config)
+        result = await arc.broadcast(self.tx.hex())
 
         self.assertIsInstance(result, BroadcastFailure)
         self.assertEqual(result.code, "500")
         self.assertEqual(result.description, "Internal Error")
-
-    async def test_broadcast_ef_format_exception(self):
-        self.tx.to_hex_ef = MagicMock(side_effect=Exception('All inputs must have source transactions when serializing to EF format'))
-        self.tx.to_hex = MagicMock(return_value="hexFormat")
-
-        mock_response = HttpResponse(ok=True, status_code=200, json_data={"txid": "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec", "txStatus": "success", "extraInfo": "extra"})
-        mock_http_client = AsyncMock(HttpClient)
-        mock_http_client.fetch = AsyncMock(return_value=mock_response)
-
-        arc = ARC(self.URL, self.apiKey, mock_http_client)
-        result = await arc.broadcast(self.tx)
-
-        self.tx.to_hex.assert_called_once()
-        self.assertIsInstance(result, BroadcastResponse)
-        self.assertEqual(result.txid, "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec")
-        self.assertEqual(result.message, "success extra")
 
 if __name__ == '__main__':
     unittest.main()
