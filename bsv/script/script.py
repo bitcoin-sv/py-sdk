@@ -1,6 +1,6 @@
 from typing import Union, Optional, List
 
-from bsv.constants import OpCode, OpCodeValueNameDict
+from bsv.constants import OpCode, OPCODE_VALUE_NAME_DICT
 from bsv.utils import encode_pushdata, unsigned_to_varint, Reader
 
 
@@ -17,7 +17,7 @@ class ScriptChunk:
     def __str__(self):
         if self.data is not None:
             return self.data.hex()
-        return OpCodeValueNameDict[self.op]
+        return OPCODE_VALUE_NAME_DICT[self.op]
 
     def __repr__(self):
         return self.__str__()
@@ -82,8 +82,8 @@ class Script:
         Checks if the script contains only push data operations.
         :return: True if the script is push-only, otherwise false.
         """
-        for item in self.script:
-            if item > int.from_bytes(OpCode.OP_16, 'big'):
+        for chunk in self.chunks:
+            if chunk.op > OpCode.OP_16:
                 return False
         return True
 
@@ -117,7 +117,7 @@ class Script:
             token = 'OP_0' if token == 'OP_FALSE' else token
             opcode: Optional[str] = None
             opcode_value: Optional[bytes] = None
-            if token.startswith('OP_') and token in OpCodeValueNameDict.values():
+            if token.startswith('OP_') and token in OPCODE_VALUE_NAME_DICT.values():
                 opcode = token
                 opcode_value = OpCode[opcode].value
 
@@ -159,3 +159,15 @@ class Script:
 
     def to_asm(self) -> str:
         return ' '.join(str(chunk) for chunk in self.chunks)
+
+    @classmethod
+    def find_and_delete(cls, source: 'Script', pattern: 'Script') -> 'Script':
+        chunks = []
+        for chunk in source.chunks:
+            if Script.from_chunks([chunk]).hex() != pattern.hex():
+                chunks.append(chunk)
+        return Script.from_chunks(chunks)
+
+    @classmethod
+    def write_bin(cls, octets: bytes) -> 'Script':
+        return Script(encode_pushdata(octets))
