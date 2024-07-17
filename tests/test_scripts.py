@@ -188,3 +188,8 @@ def _asm_pushdata(byte_length: int):
     octets = b'\x00' * byte_length
     asm = 'OP_RETURN ' + octets.hex()
     assert Script.from_asm(asm).to_asm() == asm
+
+
+def test_find_and_delete():
+    source = Script.from_asm('OP_RETURN f0f0')
+    assert Script.find_and_delete(source, Script.from_asm('f0f0')).to_asm() == 'OP_RETURN'
