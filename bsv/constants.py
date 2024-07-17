@@ -35,6 +35,17 @@ class SIGHASH(int, Enum):
     NONE_ANYONECANPAY_FORKID = NONE_FORKID | ANYONECANPAY
     SINGLE_ANYONECANPAY_FORKID = SINGLE_FORKID | ANYONECANPAY
 
+    @classmethod
+    def validate(cls, sighash: int) -> bool:
+        return sighash in [
+            cls.ALL_FORKID,
+            cls.NONE_FORKID,
+            cls.SINGLE_FORKID,
+            cls.ALL_ANYONECANPAY_FORKID,
+            cls.NONE_ANYONECANPAY_FORKID,
+            cls.SINGLE_ANYONECANPAY_FORKID,
+        ]
+
 
 #
 # P2PKH address

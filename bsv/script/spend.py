@@ -1,9 +1,13 @@
+from contextlib import suppress
 from typing import Literal
 
 from .script import ScriptChunk, Script
-from ..constants import OpCode, OPCODE_VALUE_NAME_DICT
+from ..constants import OpCode, OPCODE_VALUE_NAME_DICT, SIGHASH
+from ..curve import curve
 from ..hash import sha1, sha256, ripemd160, hash256, hash160
-from ..utils import unsigned_to_bytes
+from ..keys import PublicKey
+from ..transaction import TransactionInput, Transaction
+from ..utils import unsigned_to_bytes, deserialize_ecdsa_der
 
 MAX_SCRIPT_ELEMENT_SIZE = 1024 * 1024 * 1024
 MAX_MULTISIG_KEY_COUNT = pow(2, 31) - 1
@@ -11,7 +15,6 @@ REQUIRE_MINIMAL_PUSH = True
 REQUIRE_PUSH_ONLY_UNLOCKING_SCRIPTS = True
 REQUIRE_LOW_S_SIGNATURES = True
 REQUIRE_CLEAN_STACK = True
-MAX_SAFE_INTEGER = 2 ** 53 - 1  # TODO
 
 
 class Spend:
@@ -77,7 +80,7 @@ class Spend:
         else:
             operation = self.locking_script.chunks[self.program_counter]
 
-        is_script_executing = not (OpCode.OP_FALSE in self.if_stack)
+        is_script_executing = not (b'' in self.if_stack)
 
         # Read instruction
         current_opcode = operation.op
@@ -210,13 +213,13 @@ class Spend:
                     if current_opcode == OpCode.OP_NOTIF:
                         f = not f
                     self.stack.pop()
-                self.if_stack.append(OpCode.OP_TRUE if f else OpCode.OP_FALSE)
+                self.if_stack.append(self.encode_bool(f))
 
             elif current_opcode == OpCode.OP_ELSE:
                 if len(self.if_stack) == 0:
                     self.script_evaluation_error('OP_ELSE requires a preceeding OP_IF.')
                 f = not self.cast_to_bool(self.if_stack[-1])
-                self.if_stack[-1] = OpCode.OP_TRUE if f else OpCode.OP_FALSE
+                self.if_stack[-1] = self.encode_bool(f)
 
             elif current_opcode == OpCode.OP_ENDIF:
                 if len(self.if_stack) == 0:
@@ -420,7 +423,7 @@ class Spend:
                 x1 = self.stack.pop(-2)
                 x2 = self.stack.pop(-1)
                 f = x1 == x2
-                self.stack.append(self.push_bool(f))
+                self.stack.append(self.encode_bool(f))
                 if current_opcode == OpCode.OP_EQUALVERIFY:
                     if f:
                         self.stack.pop()
@@ -527,7 +530,7 @@ class Spend:
                 x2 = self.bin2num(self.stack.pop(-2))
                 x3 = self.bin2num(self.stack.pop())
                 f = x2 <= x1 < x3
-                self.stack.append(self.push_bool(f))
+                self.stack.append(self.encode_bool(f))
 
             elif current_opcode in [
                 OpCode.OP_RIPEMD160,
@@ -580,7 +583,7 @@ class Spend:
                 if not f and len(sig) > 0:
                     self.script_evaluation_error(f'{_codename} failed to verify the signature, '
                                                  'and requires an empty signature when verification fails.')
-                self.stack.append(self.push_bool(f))
+                self.stack.append(self.encode_bool(f))
 
                 if current_opcode == OpCode.OP_CHECKSIGVERIFY:
                     if f:
@@ -678,7 +681,7 @@ class Spend:
                     self.script_evaluation_error(f'{_codename} requires the extra stack item to be empty.')
                 self.stack.pop()
 
-                self.stack.append(self.push_bool(f))
+                self.stack.append(self.encode_bool(f))
 
                 if current_opcode == OpCode.OP_CHECKMULTISIGVERIFY:
                     if f:
@@ -695,7 +698,7 @@ class Spend:
                 if len(x1) + len(x2) > MAX_SCRIPT_ELEMENT_SIZE:
                     self.script_evaluation_error("It's not currently possible to push data "
                                                  f"larger than {MAX_SCRIPT_ELEMENT_SIZE} bytes.")
-                self.stack.append(bytes([x1, x2]))
+                self.stack.append(x1 + x2)
 
             elif current_opcode == OpCode.OP_SPLIT:
                 if len(self.stack) < 2:
@@ -707,7 +710,7 @@ class Spend:
                     self.script_evaluation_error("OP_SPLIT requires the first stack item to be a non-negative number "
                                                  "less than or equal to the size of the second-from-top stack item.")
                 self.stack.append(x1[:n])
-                self.stack.append(x1[n])
+                self.stack.append(x1[n:])
 
             elif current_opcode == OpCode.OP_NUM2BIN:
                 if len(self.stack) < 2:
@@ -804,13 +807,23 @@ class Spend:
 
     @classmethod
     def is_chunk_minimal(cls, chunk: ScriptChunk) -> bool:
-        # TODO
-        return True
-
-    @classmethod
-    def is_minimally_encoded(cls, octets: bytes, max_num_size: int = MAX_SAFE_INTEGER) -> bool:
-        # TODO
-        return True
+        data = chunk.data
+        op = chunk.op
+        if data is None:
+            return True
+        if len(data) == 0:
+            return op == OpCode.OP_0
+        if len(data) == 1 and 1 <= data[0] <= 16:
+            return op == OpCode.OP_1 + (int.from_bytes(data, 'big') - 1).to_bytes(1, 'big')
+        if len(data) == 1 and data[0] == 0x81:
+            return op == OpCode.OP_1NEGATE
+        if len(data) <= 75:
+            return op == len(data).to_bytes(1, 'big')
+        if len(data) <= 255:
+            return op == OpCode.OP_PUSHDATA1
+        if len(data) <= 65535:
+            return op == OpCode.OP_PUSHDATA2
+        return op == OpCode.OP_PUSHDATA4
 
     @classmethod
     def minimally_encode(cls, num: int) -> bytes:
@@ -834,28 +847,56 @@ class Spend:
         n = int.from_bytes(octets, 'little')
         return -n if negative else n
 
-    @classmethod
-    def is_checksig_format(cls, octets: bytes) -> bool:
-        # TODO
-        return True
+    def check_signature_encoding(self, octets: bytes) -> bool:
+        # Empty signature. Not strictly DER encoded, but allowed to provide a
+        # compact way to provide an invalid signature for use with CHECK(MULTI)SIG
+        if octets == b'':
+            return True
+        sig, sighash = octets[:-1], octets[-1]
 
-    @classmethod
-    def check_signature_encoding(cls, octets: bytes) -> bool:
-        # TODO
-        return True
+        if not SIGHASH.validate(sighash):
+            self.script_evaluation_error('Invalid SIGHASH flag')
+
+        with suppress(Exception):
+            _, s = deserialize_ecdsa_der(sig)
+            if REQUIRE_LOW_S_SIGNATURES and s > curve.n // 2:
+                self.script_evaluation_error('The signature must have a low S value.')
+            return True
+        self.script_evaluation_error('The signature format is invalid.')
 
     @classmethod
     def check_public_key_encoding(cls, octets: bytes) -> bool:
-        # TODO
-        return True
+        with suppress(Exception):
+            PublicKey(octets)
+            return True
+        return False
 
-    @classmethod
-    def verify_signature(cls, sig: bytes, pub_key: bytes, sub_script: Script) -> bool:
-        # TODO
+    def verify_signature(self, sig: bytes, pub_key: bytes, sub_script: Script) -> bool:
         if sig == b'':
             return False
-        return True
+
+        current_input = TransactionInput(
+            source_txid=self.source_txid,
+            source_output_index=self.source_output_index,
+            unlocking_script=self.unlocking_script,
+            sequence=self.input_sequence,
+            sighash=SIGHASH(sig[-1]),
+        )
+        current_input.locking_script = sub_script
+        current_input.value = self.source_satoshis
+
+        inputs = self.other_inputs[:]
+        inputs.insert(self.input_index, current_input)
+
+        tx = Transaction(
+            tx_inputs=inputs,
+            tx_outputs=self.outputs,
+            version=self.transaction_version,
+            locktime=self.lock_time,
+        )
+        preimage = tx.digest(self.input_index)
+        return PublicKey(pub_key).verify(sig[:-1], preimage)
 
     @classmethod
-    def push_bool(cls, f: bool) -> bytes:
+    def encode_bool(cls, f: bool) -> bytes:
         return b'\x01' if f else b''
