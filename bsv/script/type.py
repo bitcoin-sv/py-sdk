@@ -1,37 +1,36 @@
 from abc import abstractmethod, ABCMeta
-from typing import Union, List, Tuple, Callable
+from typing import Union, List
 
 from .script import Script
 from .unlocking_template import UnlockingScriptTemplate
 from ..constants import (
     OpCode,
     PUBLIC_KEY_HASH_BYTE_LENGTH,
-    SIGHASH,
     PUBLIC_KEY_BYTE_LENGTH_LIST,
 )
+from ..keys import PrivateKey
 from ..utils import address_to_public_key_hash, encode_pushdata, encode_int
-from ..keys import PrivateKey, PublicKey
 
 
-def toUnlockScriptTemplate(sign, estimated_unlocking_byte_length):
+def to_unlock_script_template(sign, estimated_unlocking_byte_length):
     class_attrs = {"sign": sign, "estimated_unlocking_byte_length": estimated_unlocking_byte_length}
 
-    DynamicClass = type("UnlockScriptTemplateImpl", (UnlockingScriptTemplate,), class_attrs)
+    dynamic_class = type("UnlockScriptTemplateImpl", (UnlockingScriptTemplate,), class_attrs)
 
-    return DynamicClass
+    return dynamic_class
 
 
 class ScriptTemplate(metaclass=ABCMeta):
 
     @abstractmethod
-    def locking(cls, **kwargs) -> Script:
+    def locking(self, **kwargs) -> Script:
         """
         :returns: locking script
         """
         raise NotImplementedError("ScriptTemplate.locking")
 
     @abstractmethod
-    def unlocking(cls, **kwargs) -> UnlockingScriptTemplate:
+    def unlocking(self, **kwargs) -> UnlockingScriptTemplate:
         """
         :returns: sign (function), estimated_unlocking_byte_length (function)
         """
@@ -73,7 +72,7 @@ class P2PKH(ScriptTemplate):
             raise TypeError("unsupported type to parse P2PKH locking script")
 
         assert (
-            len(pkh) == PUBLIC_KEY_HASH_BYTE_LENGTH
+                len(pkh) == PUBLIC_KEY_HASH_BYTE_LENGTH
         ), "invalid byte length of public key hash"
 
         return Script(
@@ -88,11 +87,8 @@ class P2PKH(ScriptTemplate):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
-            digests = (
-                tx.digests()
-            )  # TODO: get only digest for this input to be more efficient
 
-            signature = private_key.sign(digests[input_index])
+            signature = private_key.sign(tx.preimage(input_index))
 
             public_key: bytes = private_key.public_key().serialize()
             return Script(
@@ -103,7 +99,7 @@ class P2PKH(ScriptTemplate):
         def estimated_unlocking_byte_length() -> int:
             return 107 if private_key.compressed else 139
 
-        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)
+        return to_unlock_script_template(sign, estimated_unlocking_byte_length)
 
 
 class OpReturn(ScriptTemplate):
@@ -150,7 +146,7 @@ class P2PK(ScriptTemplate):
             raise TypeError("unsupported type to parse P2PK locking script")
 
         assert (
-            len(pk) in PUBLIC_KEY_BYTE_LENGTH_LIST
+                len(pk) in PUBLIC_KEY_BYTE_LENGTH_LIST
         ), "invalid byte length of public key"
 
         return Script(encode_pushdata(pk) + OpCode.OP_CHECKSIG)
@@ -159,17 +155,14 @@ class P2PK(ScriptTemplate):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
-            digests = (
-                tx.digests()
-            )  # TODO: get only digest for this input to be more efficient
 
-            signature = private_key.sign(digests[input_index])
+            signature = private_key.sign(tx.preimage(input_index))
             return Script(encode_pushdata(signature + sighash.to_bytes(1, "little")))
 
         def estimated_unlocking_byte_length() -> int:
             return 73
 
-        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)
+        return to_unlock_script_template(sign, estimated_unlocking_byte_length)
 
 
 class BareMultisig(ScriptTemplate):
@@ -182,9 +175,9 @@ class BareMultisig(ScriptTemplate):
 
     def locking(self, participants: List[Union[str, bytes]], threshold: int) -> Script:
         assert (
-            1 <= threshold <= len(participants)
+                1 <= threshold <= len(participants)
         ), "bad threshold or number of participants"
-        
+
         participants_parsed = []
         for participant in participants:
             assert type(participant).__name__ in [
@@ -194,7 +187,7 @@ class BareMultisig(ScriptTemplate):
             if isinstance(participant, str):
                 participant = bytes.fromhex(participant)
             assert (
-                len(participant) in PUBLIC_KEY_BYTE_LENGTH_LIST
+                    len(participant) in PUBLIC_KEY_BYTE_LENGTH_LIST
             ), "invalid byte length of public key"
             participants_parsed.append(participant)
         script: bytes = encode_int(threshold)
@@ -206,17 +199,14 @@ class BareMultisig(ScriptTemplate):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
-            digests = (
-                tx.digests()
-            )  # TODO: get only digest for this input to be more efficient
 
             script: bytes = OpCode.OP_0
             for private_key in private_keys:
-                signature = private_key.sign(digests[input_index])
+                signature = private_key.sign(tx.preimage(input_index))
                 script += encode_pushdata(signature + sighash.to_bytes(1, "little"))
             return Script(script)
 
         def estimated_unlocking_byte_length() -> int:
             return 1 + 73 * len(private_keys)
 
-        return toUnlockScriptTemplate(sign, estimated_unlocking_byte_length)
+        return to_unlock_script_template(sign, estimated_unlocking_byte_length)

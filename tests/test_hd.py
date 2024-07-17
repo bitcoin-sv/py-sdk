@@ -122,17 +122,20 @@ def test_mnemonic():
     mnemonic = '塔 恨 非 送 惨 右 娘 适 呵 二 溶 座 伸 徐 鼓'
     sd = 'fb520b58b6db65172fb00322826a902463b0e6af6f2dfd400ce77b528e81f6cbc785835e7e7f7aec5368916b96607f2a1b348bfa483bf8d3a23acf744b4ce209'
     assert seed_from_mnemonic(mnemonic, lang='zh-cn').hex() == sd
-    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')), path).address() == '1C5XJhzRNDDuPNzETmJFFhkU46s1bBFqyV'
+    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')),
+               path).address() == '1C5XJhzRNDDuPNzETmJFFhkU46s1bBFqyV'
 
     mnemonic = '猛 念 回 风 自 将 大 鸟 说 揭 召 必 旱 济 挡 陆 染 昏'
     sd = '1a9553b9a7d7a394841ca8f5883bf5366c4c7a8ace58b5d32bd291dd9bfa25072253e9904e943ffe426f334bd8275595a87c425f8713b619945155fd5e88a390'
     assert seed_from_mnemonic(mnemonic, lang='zh-cn').hex() == sd
-    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')), path).address() == '1GeiN188BR499mp4JvT1EHD7MVUZ1jJVMj'
+    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')),
+               path).address() == '1GeiN188BR499mp4JvT1EHD7MVUZ1jJVMj'
 
     mnemonic = '部 街 缓 弯 醒 巧 传 文 馆 央 怕 纬 疾 沸 静 丘 促 罗 辅 追 勃'
     sd = 'cd552980402550f9ec350cd63cb582d1087c333dbf5044c48ee0ec9f083636193b3738ae04d18198476904fdcd5955764b5f5630b0db0d35d311d0a0fd9b7e8d'
     assert seed_from_mnemonic(mnemonic, lang='zh-cn').hex() == sd
-    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')), path).address() == '1PUaGha3pSPUwCT7JTLTXUdnL9wbvibU1u'
+    assert ckd(master_xprv_from_seed(seed_from_mnemonic(mnemonic, 'zh-cn')),
+               path).address() == '1PUaGha3pSPUwCT7JTLTXUdnL9wbvibU1u'
 
 
 def test_derive():
@@ -145,39 +148,45 @@ def test_derive():
         'L1QcQMMtXar4nb9hkWdmawumopgKZfRi4Ge1T143w3mBWw7QmuU1',
     ]
 
-    assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, "1'", "3'", path="m/44'/0'/0'")] == [
-        'L3hELjh4wmLgrWEqK2mLsMW3WL3BiYYN3e7wP4s8Xtqi9M8sfNwq',
-        'L2orKKStKu1zB2gUzwvEosy8nzohBKBYHZpPThHJ9a6imJs687RA',
-    ]
+    assert [xprv.private_key().wif() for xprv in
+            derive_xprvs_from_mnemonic(mnemonic, "1'", "3'", path="m/44'/0'/0'")] == [
+               'L3hELjh4wmLgrWEqK2mLsMW3WL3BiYYN3e7wP4s8Xtqi9M8sfNwq',
+               'L2orKKStKu1zB2gUzwvEosy8nzohBKBYHZpPThHJ9a6imJs687RA',
+           ]
 
-    assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, 0, 2, change=1, path="m/44'/0'/0'")] == [
-        'L4ihevFGHEu3Hdk8TDCucLkyrDSntxhiEnjp2SQARPEnmHXsMG2L',
-        'KzRrUofZDgfArmmhqtuS7EMvTUmvWT7BGpqJdCJzmBiwWixatiEk',
-    ]
+    assert [xprv.private_key().wif() for xprv in
+            derive_xprvs_from_mnemonic(mnemonic, 0, 2, change=1, path="m/44'/0'/0'")] == [
+               'L4ihevFGHEu3Hdk8TDCucLkyrDSntxhiEnjp2SQARPEnmHXsMG2L',
+               'KzRrUofZDgfArmmhqtuS7EMvTUmvWT7BGpqJdCJzmBiwWixatiEk',
+           ]
 
-    assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, 0, 2, change="0'", path="m/44'/0'/0'")] == [
-        'L4gRZpDf5Nm6JrowpcX9Z8zmxKNNgiWE61uBb4xF2i8Y9DjXiK5u',
-        'KwxW8VrNkoxjjyH22cMPv6ZbBKZKTcV6iSqjTP73daih4fyg3znY',
-    ]
+    assert [xprv.private_key().wif() for xprv in
+            derive_xprvs_from_mnemonic(mnemonic, 0, 2, change="0'", path="m/44'/0'/0'")] == [
+               'L4gRZpDf5Nm6JrowpcX9Z8zmxKNNgiWE61uBb4xF2i8Y9DjXiK5u',
+               'KwxW8VrNkoxjjyH22cMPv6ZbBKZKTcV6iSqjTP73daih4fyg3znY',
+           ]
 
     assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, 0, 2, path="m/44'/236'/0'")] == [
         'L4toENSefoBpDJcfGAwrSMcyqBNmfSYjgkAP2qeNujw5oPQGvNtM',
         'KzwYj8kMuNqmxLModB1nyPoZjPskCqPXJHf6oUdpHkBK6ZgDUoHE',
     ]
 
-    assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, 0, 2, passphrase='bitcoin', path="m/44'/0'/0'")] == [
-        'L3BWttJh9azQPvvYwFHeEyPniDTCA9TSaPqHKA7jadLVUHDg8KKC',
-        'L3h1AvgvscQ1twBTgrH522yNtBfvPjSue3zfH5YRQCt6PdV7FdwS',
-    ]
+    assert [xprv.private_key().wif() for xprv in
+            derive_xprvs_from_mnemonic(mnemonic, 0, 2, passphrase='bitcoin', path="m/44'/0'/0'")] == [
+               'L3BWttJh9azQPvvYwFHeEyPniDTCA9TSaPqHKA7jadLVUHDg8KKC',
+               'L3h1AvgvscQ1twBTgrH522yNtBfvPjSue3zfH5YRQCt6PdV7FdwS',
+           ]
 
     mnemonic = '安 效 架 碱 皮 伐 鸭 膨 何 泰 陕 森'
 
-    assert [xprv.private_key().wif() for xprv in derive_xprvs_from_mnemonic(mnemonic, 0, 2, lang='zh-cn', path="m/44'/0'/0'")] == [
-        'KxmA3w8DSR37eD5RqqgkrHHjLgWkZbhyotDd3EehXjvKKziucpwd',
-        'L4Q21pxZZpMHWnH19FypFmQhkkxgj1ZSMeCbSfdELu5HnZZm1yJk',
-    ]
+    assert [xprv.private_key().wif() for xprv in
+            derive_xprvs_from_mnemonic(mnemonic, 0, 2, lang='zh-cn', path="m/44'/0'/0'")] == [
+               'KxmA3w8DSR37eD5RqqgkrHHjLgWkZbhyotDd3EehXjvKKziucpwd',
+               'L4Q21pxZZpMHWnH19FypFmQhkkxgj1ZSMeCbSfdELu5HnZZm1yJk',
+           ]
 
-    xpub = Xpub('xpub6Cz7kFTJ71HQPZpSb8SF2naobZ6HnLgZ8izFEJ31A5R4aR4c3sgHGP8KFwSJbUKLuBeNM4CdXHdrWTqC4sViEHTdv9mXAdCy2E3e6kjUWfB')
+    xpub = Xpub(
+        'xpub6Cz7kFTJ71HQPZpSb8SF2naobZ6HnLgZ8izFEJ31A5R4aR4c3sgHGP8KFwSJbUKLuBeNM4CdXHdrWTqC4sViEHTdv9mXAdCy2E3e6kjUWfB')
 
     assert [xpub.address() for xpub in derive_xkeys_from_xkey(xpub, 0, 1)] == ['1NDA9czdzkaJFA5Cj1TRyKeews5GrJ9QKR']
 

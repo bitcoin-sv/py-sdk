@@ -1,9 +1,9 @@
-from .utils import Reader, Writer, to_hex, to_bytes
-from .hash import hash256
-from .chaintracker import ChainTracker
-
 # from .chain_tracker import ChainTracker
-from typing import List, Dict, Optional, Union, TypedDict, Awaitable
+from typing import List, Optional, TypedDict, Awaitable
+
+from .chaintracker import ChainTracker
+from .hash import hash256
+from .utils import Reader, Writer, to_hex, to_bytes
 
 
 class MerkleLeaf(TypedDict, total=False):
@@ -39,7 +39,7 @@ class MerklePath:
         self.block_height = block_height
         self.path = path
 
-        # store all of the legal offsets which we expect given the txid indices.
+        # store all the legal offsets which we expect given the txid indices.
         legal_offsets = [set() for _ in range(len(self.path))]
         for height, leaves in enumerate(self.path):
             if not leaves and height == 0:
@@ -63,7 +63,8 @@ class MerklePath:
                             map(str, legal_offsets[height])
                         )
                         raise ValueError(
-                            f"Invalid offset: {leaf['offset']}, at height: {height}, with legal offsets: {legal_offsets_at_height}"
+                            f"Invalid offset: {leaf['offset']}, at height: {height}, "
+                            f"with legal offsets: {legal_offsets_at_height}"
                         )
 
         root = None
@@ -118,7 +119,7 @@ class MerklePath:
                 path[level].append(leaf)
                 n_leaves_at_this_height -= 1
 
-            path[level].sort(key=lambda l: l["offset"])
+            path[level].sort(key=lambda e: e["offset"])
 
         return MerklePath(block_height, path)
 
@@ -191,39 +192,38 @@ class MerklePath:
         """
         if not isinstance(txid, str):
             txid = next(leaf['hash_str'] for leaf in self.path[0] if leaf and 'hash_str' in leaf)
-        
+
         # Find the index of the txid at the lowest level of the Merkle tree
         try:
             index = next(leaf['offset'] for leaf in self.path[0] if leaf.get('hash_str') == txid)
         except StopIteration:
             raise ValueError(f"This proof does not contain the txid: {txid}")
-        
+
         # Calculate the root using the index as a way to determine which direction to concatenate.
         def hash_fn(m: str) -> str:
             return to_hex(hash256(to_bytes(m, "hex")[::-1])[::-1])
-        
+
         working_hash = txid
         for height in range(len(self.path)):
-            leaves = self.path[height]
             offset = (index >> height) ^ 1
             leaf = self.find_or_compute_leaf(height, offset)
             if not isinstance(leaf, dict):
                 raise ValueError(f"Missing hash for index {index} at height {height}")
-            
+
             if 'duplicate' in leaf and leaf['duplicate']:
                 working_hash = hash_fn(working_hash + working_hash)
             elif offset % 2 != 0:
                 working_hash = hash_fn(leaf['hash_str'] + working_hash)
             else:
                 working_hash = hash_fn(working_hash + leaf['hash_str'])
-        
+
         return working_hash
 
     def find_or_compute_leaf(self, height: int, offset: int) -> Optional[MerkleLeaf]:
         def hash_fn(m: str) -> str:
             return to_hex(hash256(to_bytes(m, "hex")[::-1])[::-1])
 
-        leaf = next((l for l in self.path[height] if l["offset"] == offset), None)
+        leaf = next((e for e in self.path[height] if e["offset"] == offset), None)
         if leaf:
             return leaf
 
@@ -231,13 +231,13 @@ class MerklePath:
             return None
 
         h = height - 1
-        l = offset << 1
+        e = offset << 1
 
-        leaf0 = self.find_or_compute_leaf(h, l)
+        leaf0 = self.find_or_compute_leaf(h, e)
         if not leaf0 or not leaf0.get("hash_str"):
             return None
 
-        leaf1 = self.find_or_compute_leaf(h, l + 1)
+        leaf1 = self.find_or_compute_leaf(h, e + 1)
         if not leaf1:
             return None
 
@@ -283,17 +283,16 @@ class MerklePath:
         combined_path = []
         for h in range(len(self.path)):
             combined_level = self.path[h] + [
-                leaf for leaf in other.path[h] if leaf["offset"] not in {l["offset"] for l in self.path[h]}
+                leaf for leaf in other.path[h] if leaf["offset"] not in {e["offset"] for e in self.path[h]}
             ]
             for leaf in other.path[h]:
                 if "txid" in leaf:
-                    for l in combined_level:
-                        if l["offset"] == leaf["offset"]:
-                            l["txid"] = True
+                    for e in combined_level:
+                        if e["offset"] == leaf["offset"]:
+                            e["txid"] = True
             combined_path.append(combined_level)
         self.path = combined_path
         self.trim()
-        
 
     def trim(self) -> None:
         """
@@ -301,6 +300,7 @@ class MerklePath:
         Assumes that at least all required nodes are present.
         Leaves all levels sorted by increasing offset.
         """
+
         def push_if_new(v: int, a: List[int]) -> None:
             if not a or a[-1] != v:
                 a.append(v)
@@ -321,13 +321,13 @@ class MerklePath:
         drop_offsets = []
         for h in range(len(self.path)):
             self.path[h].sort(key=lambda x: x["offset"])
-            
-        for l in self.path[0]:
-            if l.get("txid"):
-                push_if_new(l["offset"] >> 1, computed_offsets)
+
+        for e in self.path[0]:
+            if e.get("txid"):
+                push_if_new(e["offset"] >> 1, computed_offsets)
             else:
-                is_odd = l["offset"] % 2 == 1
-                peer = next((n for n in self.path[0] if n["offset"] == l["offset"] + (1 if is_odd else -1)), None)
+                is_odd = e["offset"] % 2 == 1
+                peer = next((n for n in self.path[0] if n["offset"] == e["offset"] + (1 if is_odd else -1)), None)
                 if peer and not peer.get("txid"):
                     push_if_new(peer["offset"], drop_offsets)
 
@@ -337,5 +337,3 @@ class MerklePath:
             drop_offsets = computed_offsets
             computed_offsets = next_computed_offsets(computed_offsets)
             drop_offsets_from_level(drop_offsets, h)
-
-

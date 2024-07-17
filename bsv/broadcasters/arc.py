@@ -1,6 +1,6 @@
 import json
 import random
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Union
 
 from ..broadcaster import BroadcastResponse, BroadcastFailure, Broadcaster
 from ..http_client import HttpClient, default_http_client
@@ -16,13 +16,13 @@ def random_hex(length: int) -> str:
 
 class ARCConfig:
     def __init__(
-        self,
-        api_key: Optional[str] = None,
-        http_client: Optional[HttpClient] = None,
-        deployment_id: Optional[str] = None,
-        callback_url: Optional[str] = None,
-        callback_token: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+            self,
+            api_key: Optional[str] = None,
+            http_client: Optional[HttpClient] = None,
+            deployment_id: Optional[str] = None,
+            callback_url: Optional[str] = None,
+            callback_token: Optional[str] = None,
+            headers: Optional[Dict[str, str]] = None,
     ):
         self.api_key = api_key
         self.http_client = http_client
@@ -37,8 +37,8 @@ def default_deployment_id() -> str:
 
 
 class ARC(Broadcaster):
-    def __init__(self, URL: str, config: Union[str, ARCConfig] = None):
-        self.URL = URL
+    def __init__(self, url: str, config: Union[str, ARCConfig] = None):
+        self.URL = url
         if isinstance(config, str):
             self.api_key = config
             self.http_client = default_http_client()
@@ -56,7 +56,7 @@ class ARC(Broadcaster):
             self.headers = config.headers
 
     async def broadcast(
-        self, raw_tx: str
+            self, raw_tx: str
     ) -> Union[BroadcastResponse, BroadcastFailure]:
         request_options = {
             "method": "POST",

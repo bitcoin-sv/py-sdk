@@ -1,7 +1,8 @@
-from typing import Union, Dict, Any
 from abc import ABC, abstractmethod
+from typing import Union, Dict, Any
 
-#from .transaction import Transaction TODO: Fix recursive import
+
+# from .transaction import Transaction TODO: Fix recursive import
 
 
 class BroadcastResponse:
@@ -13,12 +14,12 @@ class BroadcastResponse:
 
 class BroadcastFailure:
     def __init__(
-        self,
-        status: str,
-        code: str,
-        description: str,
-        txid: str = None,
-        more: Dict[str, Any] = None,
+            self,
+            status: str,
+            code: str,
+            description: str,
+            txid: str = None,
+            more: Dict[str, Any] = None,
     ):
         self.status = status
         self.code = code
@@ -30,7 +31,7 @@ class BroadcastFailure:
 class Broadcaster(ABC):
     @abstractmethod
     async def broadcast(
-        self, transaction: Any
+            self, transaction: Any
     ) -> Union[BroadcastResponse, BroadcastFailure]:
         pass
 
@@ -41,4 +42,3 @@ def is_broadcast_response(r: Union[BroadcastResponse, BroadcastFailure]) -> bool
 
 def is_broadcast_failure(r: Union[BroadcastResponse, BroadcastFailure]) -> bool:
     return r.status == "error"
-

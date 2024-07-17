@@ -22,4 +22,3 @@ class ChainTracker(ABC):
         :return: A boolean indicating if the Merkle root is valid for the specified block height.
         """
         pass
-    

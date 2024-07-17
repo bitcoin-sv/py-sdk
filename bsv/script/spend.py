@@ -6,7 +6,8 @@ from ..constants import OpCode, OPCODE_VALUE_NAME_DICT, SIGHASH
 from ..curve import curve
 from ..hash import sha1, sha256, ripemd160, hash256, hash160
 from ..keys import PublicKey
-from ..transaction import TransactionInput, Transaction
+from ..transaction_input import TransactionInput
+from ..transaction_preimage import tx_preimage
 from ..utils import unsigned_to_bytes, deserialize_ecdsa_der
 
 MAX_SCRIPT_ELEMENT_SIZE = 1024 * 1024 * 1024
@@ -888,13 +889,7 @@ class Spend:
         inputs = self.other_inputs[:]
         inputs.insert(self.input_index, current_input)
 
-        tx = Transaction(
-            tx_inputs=inputs,
-            tx_outputs=self.outputs,
-            version=self.transaction_version,
-            locktime=self.lock_time,
-        )
-        preimage = tx.digest(self.input_index)
+        preimage = tx_preimage(self.input_index, inputs, self.outputs, self.transaction_version, self.lock_time)
         return PublicKey(pub_key).verify(sig[:-1], preimage)
 
     @classmethod

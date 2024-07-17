@@ -4,8 +4,9 @@ from typing import Union
 
 from ..base58 import base58check_decode, base58check_encode
 from ..constants import BIP32_SEED_BYTE_LENGTH
+from ..constants import NETWORK_XPUB_PREFIX_DICT, NETWORK_XPRV_PREFIX_DICT
 from ..constants import Network, XKEY_BYTE_LENGTH, XKEY_PREFIX_LIST, PUBLIC_KEY_COMPRESSED_PREFIX_LIST
-from ..constants import XPUB_PREFIX_NETWORK_DICT, XPRV_PREFIX_NETWORK_DICT, NETWORK_XPUB_PREFIX_DICT, NETWORK_XPRV_PREFIX_DICT
+from ..constants import XPUB_PREFIX_NETWORK_DICT, XPRV_PREFIX_NETWORK_DICT
 from ..curve import curve, add, multiply
 from ..keys import PublicKey, PrivateKey
 
@@ -187,7 +188,9 @@ def ckd(xkey: Union[Xprv, Xpub], path: str) -> Union[Xprv, Xpub]:
 
     if steps[0] == 'm':
         # should be master key
-        assert xkey.depth == 0 and xkey.fingerprint == b'\x00\x00\x00\x00' and xkey.index == 0, 'absolute path for non-master key'
+        assert (
+                xkey.depth == 0 and xkey.fingerprint == b'\x00\x00\x00\x00' and xkey.index == 0
+        ), 'absolute path for non-master key'
 
     child = xkey
     for step in steps[1:]:

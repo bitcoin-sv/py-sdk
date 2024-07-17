@@ -3,9 +3,9 @@ import re
 import struct
 from base64 import b64encode, b64decode
 from contextlib import suppress
+from io import BytesIO
 from secrets import randbits
 from typing import Tuple, Optional, Union, Literal, List
-from io import BytesIO
 
 from .base58 import base58check_decode
 from .constants import Network, ADDRESS_PREFIX_NETWORK_DICT, WIF_PREFIX_NETWORK_DICT, NUMBER_BYTE_LENGTH
@@ -294,7 +294,7 @@ def to_bytes(msg: Union[bytes, str], enc: Optional[str] = None) -> bytes:
             return base64.b64decode(msg)
         else:  # UTF-8 encoding
             return msg.encode('utf-8')
-    
+
     return bytes(msg)
 
 
@@ -363,9 +363,11 @@ def to_base58(bin_: List[int]) -> str:
     return result
 
 
-def to_base58_check(bin_: List[int], prefix: List[int] = [0]) -> str:
+def to_base58_check(bin_: List[int], prefix: Optional[List[int]] = None) -> str:
     """Converts a binary array into a base58check string with a checksum."""
     import hashlib
+    if prefix is None:
+        prefix = [0]
     hash_ = hashlib.sha256(hashlib.sha256(bytes(prefix + bin_)).digest()).digest()
     return to_base58(prefix + bin_ + list(hash_[:4]))
 
@@ -387,6 +389,7 @@ def from_base58_check(str_: str, enc: Optional[str] = None, prefix_length: int =
         data = to_hex(bytes(data))
 
     return {'prefix': prefix, 'data': data}
+
 
 class Writer(BytesIO):
     def __init__(self):
@@ -439,7 +442,7 @@ class Writer(BytesIO):
     def write_int32_le(self, n: int) -> 'Writer':
         self.write(struct.pack('<i', n))
         return self
-    
+
     def write_uint64_be(self, n: int) -> 'Writer':
         self.write(struct.pack('>Q', n))
         return self
@@ -549,7 +552,7 @@ class Reader(BytesIO):
         return result if result else b''
 
     def read_int(
-        self, byte_length: int, byteorder: Literal["big", "little"] = "little"
+            self, byte_length: int, byteorder: Literal["big", "little"] = "little"
     ) -> Optional[int]:
         octets = self.read_bytes(byte_length)
         if not octets:

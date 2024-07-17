@@ -1,17 +1,15 @@
-from typing import Optional, Dict, Any
-import aiohttp
-import asyncio
+from typing import Optional, Dict
 
-from ..http_client import HttpClient, default_http_client
 from ..chaintracker import ChainTracker
+from ..http_client import HttpClient, default_http_client
 
 
 class WhatsOnChainTracker(ChainTracker):
     def __init__(
-        self,
-        network: str = "main",
-        api_key: Optional[str] = None,
-        http_client: Optional[HttpClient] = None,
+            self,
+            network: str = "main",
+            api_key: Optional[str] = None,
+            http_client: Optional[HttpClient] = None,
     ):
         self.network = network
         self.URL = f"https://api.whatsonchain.com/v1/bsv/{network}"
@@ -43,4 +41,3 @@ class WhatsOnChainTracker(ChainTracker):
         if self.api_key:
             headers["Authorization"] = self.api_key
         return headers
-

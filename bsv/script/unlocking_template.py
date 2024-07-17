@@ -14,4 +14,3 @@ class UnlockingScriptTemplate(ABC):
     @abstractmethod
     def estimated_unlocking_byte_length() -> int:
         pass
-
