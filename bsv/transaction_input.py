@@ -29,7 +29,7 @@ class TransactionInput:
 
         self.txid: str = source_txid if source_txid else '00' * 32
         self.vout: int = source_output_index
-        self.value: int = utxo.value if utxo else None
+        self.satoshis: int = utxo.satoshis if utxo else None
         self.locking_script: Script = utxo.locking_script if utxo else None
 
         self.source_transaction = source_transaction
@@ -56,7 +56,7 @@ class TransactionInput:
 
     def __str__(self) -> str:  # pragma: no cover
         return (f"<TransactionInput outpoint={self.txid}:{self.vout} "
-                f"value={self.value} locking_script={self.locking_script}>")
+                f"value={self.satoshis} locking_script={self.locking_script}>")
 
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()

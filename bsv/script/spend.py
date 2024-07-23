@@ -884,7 +884,7 @@ class Spend:
             sighash=SIGHASH(sig[-1]),
         )
         current_input.locking_script = sub_script
-        current_input.value = self.source_satoshis
+        current_input.satoshis = self.source_satoshis
 
         inputs = self.other_inputs[:]
         inputs.insert(self.input_index, current_input)

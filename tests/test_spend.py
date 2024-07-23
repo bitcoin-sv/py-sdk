@@ -31,7 +31,7 @@ def test_complex_case():
     locking_script = Script(locking_script_hex)
     tx = Transaction.from_hex(tx_hex)
     tx.inputs[vin].locking_script = locking_script
-    tx.inputs[vin].value = amount
+    tx.inputs[vin].satoshis = amount
 
     spend = Spend({
         'sourceTXID': tx.inputs[vin].txid,

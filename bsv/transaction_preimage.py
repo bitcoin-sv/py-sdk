@@ -42,7 +42,7 @@ def _preimage(
     stream.write(tx_input.locking_script.byte_length_varint())
     stream.write(tx_input.locking_script.serialize())
     # 6
-    stream.write(tx_input.value.to_bytes(8, "little"))
+    stream.write(tx_input.satoshis.to_bytes(8, "little"))
     # 7
     stream.write(tx_input.sequence.to_bytes(4, "little"))
     # 8

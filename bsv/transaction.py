@@ -116,10 +116,10 @@ class Transaction:
         return self
 
     def total_value_in(self) -> int:
-        return sum([tx_input.value for tx_input in self.inputs])
+        return sum([tx_input.satoshis for tx_input in self.inputs])
 
     def total_value_out(self) -> int:
-        return sum([tx_output.value for tx_output in self.outputs])
+        return sum([tx_output.satoshis for tx_output in self.outputs])
 
     def fee(self) -> int:
         """
@@ -186,7 +186,7 @@ class Transaction:
         if fee_overpaid > 0:  # pragma: no cover
             change_output = TransactionOutput(
                 locking_script=P2PKH().lock(change_address),
-                value=fee_overpaid
+                satoshis=fee_overpaid
             )
             self.add_output(change_output)
         return self
@@ -281,14 +281,14 @@ class Transaction:
             writer.write_var_int_num(len(script_bin))
             writer.write(script_bin)
             writer.write_uint32_le(i.sequence)
-            writer.write_uint64_le(i.source_transaction.outputs[i.vout].value)
+            writer.write_uint64_le(i.source_transaction.outputs[i.vout].satoshis)
             locking_script_bin = i.source_transaction.outputs[i.vout].locking_script.serialize()
             writer.write_var_int_num(len(locking_script_bin))
             writer.write(locking_script_bin)
 
         writer.write_var_int_num(len(self.outputs))
         for o in self.outputs:
-            writer.write_uint64_le(o.value)
+            writer.write_uint64_le(o.satoshis)
             script_bin = o.locking_script.serialize()
             writer.write_var_int_num(len(script_bin))
             writer.write(script_bin)
@@ -398,7 +398,7 @@ class Transaction:
             spend = Spend({
                 'sourceTXID': tx_input.source_transaction.txid(),
                 'sourceOutputIndex': tx_input.vout,
-                'sourceSatoshis': source_output.value,
+                'sourceSatoshis': source_output.satoshis,
                 'lockingScript': source_output.locking_script,
                 'transactionVersion': self.version,
                 'otherInputs': other_inputs,
@@ -414,9 +414,9 @@ class Transaction:
 
         output_total = 0
         for out in self.outputs:
-            if not isinstance(out.value, int):
+            if not isinstance(out.satoshis, int):
                 raise ValueError("Every output must have a defined amount during transaction verification.")
-            output_total += out.value
+            output_total += out.satoshis
 
         return output_total <= input_total
 

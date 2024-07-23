@@ -43,7 +43,7 @@ def test_p2pkh():
         [
             TransactionOutput(
                 locking_script=Script(locking_script),
-                value=1000
+                satoshis=1000
             )
         ]
     )
@@ -87,7 +87,7 @@ def test_p2pk():
         [
             TransactionOutput(
                 locking_script=P2PK().lock(public_key.hex()),
-                value=1000
+                satoshis=1000
             )
         ]
     )
@@ -118,7 +118,7 @@ def test_bare_multisig():
         [
             TransactionOutput(
                 locking_script=BareMultisig().lock(pubs, 2),
-                value=1000
+                satoshis=1000
             )
         ]
     )
