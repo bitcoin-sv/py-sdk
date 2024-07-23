@@ -185,7 +185,7 @@ class Transaction:
         fee_overpaid = self.fee() - fee_expected
         if fee_overpaid > 0:  # pragma: no cover
             change_output = TransactionOutput(
-                locking_script=P2PKH().locking(change_address),
+                locking_script=P2PKH().lock(change_address),
                 value=fee_overpaid
             )
             self.add_output(change_output)

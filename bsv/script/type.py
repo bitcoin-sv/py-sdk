@@ -23,14 +23,14 @@ def to_unlock_script_template(sign, estimated_unlocking_byte_length):
 class ScriptTemplate(metaclass=ABCMeta):
 
     @abstractmethod
-    def locking(self, **kwargs) -> Script:
+    def lock(self, **kwargs) -> Script:
         """
         :returns: locking script
         """
         raise NotImplementedError("ScriptTemplate.locking")
 
     @abstractmethod
-    def unlocking(self, **kwargs) -> UnlockingScriptTemplate:
+    def unlock(self, **kwargs) -> UnlockingScriptTemplate:
         """
         :returns: sign (function), estimated_unlocking_byte_length (function)
         """
@@ -45,10 +45,10 @@ class Unknown(ScriptTemplate):  # pragma: no cover
     def __repr__(self) -> str:
         return self.__str__()
 
-    def locking(self, **kwargs) -> Script:
+    def lock(self, **kwargs) -> Script:
         raise ValueError("don't know how to lock for script of unknown type")
 
-    def unlocking(self, **kwargs):
+    def unlock(self, **kwargs):
         raise ValueError("don't know how to unlock for script of unknown type")
 
 
@@ -60,7 +60,7 @@ class P2PKH(ScriptTemplate):
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
-    def locking(self, addr: Union[str, bytes]) -> Script:
+    def lock(self, addr: Union[str, bytes]) -> Script:
         """
         from address (str) or public key hash160 (bytes)
         """
@@ -83,7 +83,7 @@ class P2PKH(ScriptTemplate):
             + OpCode.OP_CHECKSIG
         )
 
-    def unlocking(self, private_key: PrivateKey):
+    def unlock(self, private_key: PrivateKey):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
@@ -110,7 +110,7 @@ class OpReturn(ScriptTemplate):
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
-    def locking(self, pushdatas: List[Union[str, bytes]]) -> Script:
+    def lock(self, pushdatas: List[Union[str, bytes]]) -> Script:
         script: bytes = OpCode.OP_FALSE + OpCode.OP_RETURN
         for pushdata in pushdatas:
             if isinstance(pushdata, str):
@@ -122,7 +122,7 @@ class OpReturn(ScriptTemplate):
             script += encode_pushdata(pushdata_bytes, minimal_push=False)
         return Script(script)
 
-    def unlocking(self, **kwargs):  # pragma: no cover
+    def unlock(self, **kwargs):  # pragma: no cover
         raise ValueError("OP_RETURN cannot be unlocked")
 
 
@@ -134,7 +134,7 @@ class P2PK(ScriptTemplate):
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
-    def locking(self, public_key: Union[str, bytes]) -> Script:
+    def lock(self, public_key: Union[str, bytes]) -> Script:
         """
         from public key in format str or bytes
         """
@@ -151,7 +151,7 @@ class P2PK(ScriptTemplate):
 
         return Script(encode_pushdata(pk) + OpCode.OP_CHECKSIG)
 
-    def unlocking(self, private_key: PrivateKey):
+    def unlock(self, private_key: PrivateKey):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
@@ -173,7 +173,7 @@ class BareMultisig(ScriptTemplate):
     def __repr__(self) -> str:  # pragma: no cover
         return self.__str__()
 
-    def locking(self, participants: List[Union[str, bytes]], threshold: int) -> Script:
+    def lock(self, participants: List[Union[str, bytes]], threshold: int) -> Script:
         assert (
                 1 <= threshold <= len(participants)
         ), "bad threshold or number of participants"
@@ -195,7 +195,7 @@ class BareMultisig(ScriptTemplate):
             script += encode_pushdata(participant)
         return Script(script + encode_int(len(participants)) + OpCode.OP_CHECKMULTISIG)
 
-    def unlocking(self, private_keys: List[PrivateKey]):
+    def unlock(self, private_keys: List[PrivateKey]):
         def sign(tx, input_index) -> Script:
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash

@@ -139,18 +139,18 @@ def test_transaction_signing_hydrate_scripts():
     public_key = private_key.public_key()
     public_key_hash = public_key.address()
 
-    source_tx = Transaction([], [TransactionOutput(P2PKH().locking(public_key_hash), 4000)])
+    source_tx = Transaction([], [TransactionOutput(P2PKH().lock(public_key_hash), 4000)])
     spend_tx = Transaction(
         [
             TransactionInput(
                 source_transaction=source_tx,
                 source_output_index=0,
-                unlocking_script_template=P2PKH().unlocking(private_key),
+                unlocking_script_template=P2PKH().unlock(private_key),
             )
         ],
         [
             TransactionOutput(
-                P2PKH().locking(public_key_hash),
+                P2PKH().lock(public_key_hash),
                 1000,
             )
         ],
@@ -167,11 +167,11 @@ def test_estimated_byte_length():
     _in = TransactionInput(
         source_txid="00" * 32,
         unlocking_script=None,
-        unlocking_script_template=P2PKH().unlocking(PrivateKey()),
+        unlocking_script_template=P2PKH().unlock(PrivateKey()),
     )
     _in.value = 2000
 
-    _out = TransactionOutput(P2PKH().locking(PrivateKey().address()), 1000)
+    _out = TransactionOutput(P2PKH().lock(PrivateKey().address()), 1000)
 
     t = Transaction().add_input(_in).add_output(_out)
 
@@ -334,7 +334,7 @@ BRC62Hex = '0100beef01fe636d0c0007021400fe507c0c7aa754cef1f7889d5fd395cf1f785dd7
 
 def test_output():
     assert TransactionOutput(
-        locking_script=OpReturn().locking(["123", "456"])
+        locking_script=OpReturn().lock(["123", "456"])
     ).locking_script == Script("006a" + "03313233" + "03343536")
 
 
@@ -345,16 +345,16 @@ def test_digest():
     t: Transaction = Transaction()
     t_in = TransactionInput(
         source_transaction=Transaction(
-            [], [None, TransactionOutput(locking_script=P2PKH().locking(address), value=1000)]
+            [], [None, TransactionOutput(locking_script=P2PKH().lock(address), value=1000)]
         ),
         source_txid="d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48",
         source_output_index=1,
-        unlocking_script_template=P2PKH().unlocking(PrivateKey()),
+        unlocking_script_template=P2PKH().unlock(PrivateKey()),
     )
     t.add_input(t_in)
     t.add_output(
         TransactionOutput(
-            locking_script=P2PKH().locking("1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw"),
+            locking_script=P2PKH().lock("1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw"),
             value=800,
         )
     )
@@ -366,23 +366,23 @@ def test_digest():
     t_in1 = TransactionInput(
         source_transaction=Transaction(
             [],
-            [None, None, TransactionOutput(locking_script=P2PKH().locking(address), value=1000)],
+            [None, None, TransactionOutput(locking_script=P2PKH().lock(address), value=1000)],
         ),
         source_txid="d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48",
         source_output_index=2,
-        unlocking_script_template=P2PKH().locking(address),
+        unlocking_script_template=P2PKH().lock(address),
     )
     t_in2 = TransactionInput(
         source_transaction=Transaction(
-            [], [TransactionOutput(locking_script=P2PKH().locking(address), value=1000)]
+            [], [TransactionOutput(locking_script=P2PKH().lock(address), value=1000)]
         ),
         source_txid="fcc1a53e8bb01dbc094e86cb86f195219022c26e0c03d6f18ea17c3a3ba3c1e4",
         source_output_index=0,
-        unlocking_script_template=P2PKH().unlocking(PrivateKey()),
+        unlocking_script_template=P2PKH().unlock(PrivateKey()),
     )
     t.add_inputs([t_in1, t_in2])
     t.add_output(
-        TransactionOutput(P2PKH().locking("18CgRLx9hFZqDZv75J5kED7ANnDriwvpi1"), value=1700)
+        TransactionOutput(P2PKH().lock("18CgRLx9hFZqDZv75J5kED7ANnDriwvpi1"), value=1700)
     )
     assert t.preimage(0) == expected_digest[0]
     assert t.preimage(1) == expected_digest[1]
@@ -393,15 +393,15 @@ def test_transaction():
     t = Transaction()
     t_in = TransactionInput(
         source_transaction=Transaction(
-            [], [None, TransactionOutput(locking_script=P2PKH().locking(address), value=1000)]
+            [], [None, TransactionOutput(locking_script=P2PKH().lock(address), value=1000)]
         ),
         source_txid="d2bc57099dd434a5adb51f7de38cc9b8565fb208090d9b5ea7a6b4778e1fdd48",
         source_output_index=1,
-        unlocking_script_template=P2PKH().unlocking(PrivateKey()),
+        unlocking_script_template=P2PKH().unlock(PrivateKey()),
     )
     t.add_input(t_in)
     t.add_output(
-        TransactionOutput(P2PKH().locking("1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw"), value=800)
+        TransactionOutput(P2PKH().lock("1JDZRGf5fPjGTpqLNwjHFFZnagcZbwDsxw"), value=800)
     )
 
     signature = bytes.fromhex(
@@ -441,7 +441,7 @@ def test_transaction():
     t.add_change(address)
     # 1-2 transaction 226 bytes --> fee 113 satoshi --> 787 left
     assert len(t.outputs) == 2
-    assert t.outputs[1].locking_script == P2PKH().locking(address)
+    assert t.outputs[1].locking_script == P2PKH().lock(address)
     assert t.outputs[1].value == 787
 
     # TODO: re-enable auto change addr
