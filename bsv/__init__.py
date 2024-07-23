@@ -7,4 +7,4 @@ from .transaction import Transaction, InsufficientFunds
 from .transaction_input import TransactionInput
 from .transaction_output import TransactionOutput
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
