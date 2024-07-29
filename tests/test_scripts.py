@@ -53,8 +53,17 @@ def test_p2pkh():
             source_output_index=0,
             unlocking_script_template=P2PKH().unlock(key_compressed)
         )
-    ], [])
-    tx.add_change(address)
+    ], 
+    [
+        TransactionOutput(
+            locking_script=P2PKH().lock(address),
+            change=True
+        )
+    ])
+    
+    tx.fee()
+    
+    print(tx.outputs)
 
     unlocking_script = P2PKH().unlock(key_compressed).sign(tx, 0)
     assert isinstance(unlocking_script, Script)
@@ -97,8 +106,15 @@ def test_p2pk():
             source_output_index=0,
             unlocking_script_template=P2PK().unlock(private_key)
         )
-    ], [])
-    tx.add_change(public_key.address())
+    ], 
+    [
+        TransactionOutput(
+            locking_script=P2PKH().lock(public_key.address()),
+            change=True
+        )
+    ])
+
+    tx.fee()
 
     unlocking_script = P2PK().unlock(private_key).sign(tx, 0)
     assert isinstance(unlocking_script, Script)
@@ -128,8 +144,14 @@ def test_bare_multisig():
             source_output_index=0,
             unlocking_script_template=BareMultisig().unlock(privs)
         )
-    ], [])
-    tx.add_change('1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9')
+    ], [
+        TransactionOutput(
+            locking_script=P2PKH().lock('1AfxgwYJrBgriZDLryfyKuSdBsi59jeBX9'),
+            change=True
+        )
+    ])
+    
+    tx.fee()
 
     unlocking_script = BareMultisig().unlock(privs).sign(tx, 0)
     assert isinstance(unlocking_script, Script)

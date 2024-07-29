@@ -6,6 +6,7 @@ from .broadcaster import Broadcaster, BroadcastResponse
 from .broadcasters import default_broadcaster
 from .chaintracker import ChainTracker
 from .chaintrackers import default_chain_tracker
+from .fee_models import SatoshisPerKilobyte
 from .constants import (
     TRANSACTION_VERSION,
     TRANSACTION_LOCKTIME,
@@ -34,7 +35,6 @@ class Transaction:
             version: int = TRANSACTION_VERSION,
             locktime: int = TRANSACTION_LOCKTIME,
             merkle_path: Optional[MerklePath] = None,
-            fee_rate: Optional[float] = None,
             **kwargs,
     ):
         self.inputs: List[TransactionInput] = tx_inputs or []
@@ -42,9 +42,6 @@ class Transaction:
         self.version: int = version
         self.locktime: int = locktime
         self.merkle_path = merkle_path
-        self.fee_rate: float = (
-            fee_rate if fee_rate is not None else TRANSACTION_FEE_RATE
-        )
 
         self.kwargs: Dict[str, Any] = dict(**kwargs) or {}
 
@@ -107,6 +104,13 @@ class Transaction:
         :bypass: if True then ONLY sign inputs which unlocking script is None, otherwise sign all the inputs
         sign all inputs according to their script type
         """
+        for out in self.outputs:
+            if out.satoshis is None:
+                if out.change:
+                    raise ValueError('There are still change outputs with uncomputed amounts. Use the fee() method to compute the change amounts and transaction fees prior to signing.')
+                else:
+                    raise ValueError('One or more transaction outputs is missing an amount. Ensure all output amounts are provided before signing.')
+
         for i in range(len(self.inputs)):
             tx_input = self.inputs[i]
             if tx_input.unlocking_script is None or not bypass:
@@ -121,7 +125,7 @@ class Transaction:
     def total_value_out(self) -> int:
         return sum([tx_output.satoshis for tx_output in self.outputs])
 
-    def fee(self) -> int:
+    def get_fee(self) -> int:
         """
         :returns: actual fee paid of this transaction under the current state
         """
@@ -165,42 +169,58 @@ class Transaction:
 
     estimated_size = estimated_byte_length
 
-    def estimated_fee(self) -> int:
+    def fee(self, model_or_fee=None, change_distribution='equal'):
         """
-        :returns: estimated fee of this transaction after signing
+        Computes the fee for the transaction and adjusts the change outputs accordingly.
+        
+        :param model_or_fee: Fee model or fee amount. Defaults to `SatoshisPerKilobyte` with value 10 if not provided.
+        :param change_distribution: Method of change distribution ('equal' or 'random'). Defaults to 'equal'.
         """
-        return math.ceil(self.fee_rate * self.estimated_byte_length())
+        
+        if model_or_fee is None:
+            model_or_fee = SatoshisPerKilobyte(10)
+        
+        if isinstance(model_or_fee, int):
+            fee = model_or_fee
+        else:
+            fee = model_or_fee.compute_fee(self)
 
-    def add_change(self, change_address: str) -> "Transaction":
-        # byte length increased after adding a P2PKH change output
-        size_increased = (
-                34
-                + len(unsigned_to_varint(len(self.outputs) + 1))
-                - len(unsigned_to_varint(len(self.outputs)))
-        )
-        # then we know the estimated byte length after signing, of this transaction with a change output
-        fee_expected = math.ceil(
-            self.fee_rate * (self.estimated_byte_length() + size_increased)
-        )
-        fee_overpaid = self.fee() - fee_expected
-        if fee_overpaid > 0:  # pragma: no cover
-            change_output = TransactionOutput(
-                locking_script=P2PKH().lock(change_address),
-                satoshis=fee_overpaid
-            )
-            self.add_output(change_output)
-        return self
+        change = 0
+        for tx_in in self.inputs:
+            if not tx_in.source_transaction:
+                raise ValueError('Source transactions are required for all inputs during fee computation')
+            change += tx_in.source_transaction.outputs[tx_in.vout].satoshis
+        
+        change -= fee
+        
+        change_count = 0
+        for out in self.outputs:
+            if not out.change:
+                change -= out.satoshis
+            else:
+                change_count += 1
+        
+        if change <= change_count:
+            # Not enough change to distribute among the change outputs.
+            # Remove all change outputs and leave the extra for the miners.
+            self.outputs = [out for out in self.outputs if not out.change]
+            return
+        
+        # Distribute change among change outputs
+        if change_distribution == 'random':
+            # TODO: Implement random distribution
+            raise NotImplementedError('Random change distribution is not yet implemented')
+        elif change_distribution == 'equal':
+            per_output = change // change_count
+            for out in self.outputs:
+                if out.change:
+                    out.satoshis = per_output
 
     def broadcast(
             self,
             broadcaster: Broadcaster = default_broadcaster(),
             check_fee: bool = True
     ) -> BroadcastResponse:  # pragma: no cover
-        fee_expected = self.estimated_fee()
-        if check_fee and self.fee() < fee_expected:
-            raise InsufficientFunds(
-                f"require {self.total_value_out() + fee_expected} satoshi but only {self.total_value_in()}"
-            )
         return broadcaster.broadcast(self.raw())
 
     @classmethod
