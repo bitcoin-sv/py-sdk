@@ -6,6 +6,7 @@ from bsv.script.type import P2PKH, OpReturn
 from bsv.transaction import TransactionInput, TransactionOutput, Transaction
 from bsv.transaction_preimage import _preimage, tx_preimages
 from bsv.utils import encode_pushdata, Reader
+from bsv.fee_models import SatoshisPerKilobyte
 
 digest1 = bytes.fromhex(
     "01000000"
@@ -152,13 +153,18 @@ def test_transaction_signing_hydrate_scripts():
             TransactionOutput(
                 P2PKH().lock(public_key_hash),
                 1000,
-            )
+            ),
+            TransactionOutput(
+                P2PKH().lock(public_key_hash),
+                change=True,
+            ),
+            
         ],
     )
-    spend_tx.add_change(public_key_hash)
 
     assert not spend_tx.inputs[0].unlocking_script
 
+    spend_tx.fee()
     spend_tx.sign()
     assert spend_tx.inputs[0].unlocking_script
 
@@ -420,7 +426,7 @@ def test_transaction():
     assert (
             t.txid() == "4674da699de44c9c5d182870207ba89e5ccf395e5101dab6b0900bbf2f3b16cb"
     )
-    assert t.fee() == 200
+    assert t.get_fee() == 200
     assert t.byte_length() == 191
 
     t.inputs[0].sighash = SIGHASH.NONE_ANYONECANPAY_FORKID
@@ -435,21 +441,23 @@ def test_transaction():
     t.inputs[0].private_keys = [
         PrivateKey("L5agPjZKceSTkhqZF2dmFptT5LFrbr6ZGPvP7u4A6dvhTrr71WZ9")
     ]
-    assert t.estimated_fee() == 96
 
     t.outputs[0].satoshis = 100
-    t.add_change(address)
+    t.add_output(
+        TransactionOutput(
+            P2PKH().lock(address),
+            change=True
+        )
+    )
+    
+    t.fee(
+        SatoshisPerKilobyte(500)
+    )
+    
     # 1-2 transaction 226 bytes --> fee 113 satoshi --> 787 left
     assert len(t.outputs) == 2
     assert t.outputs[1].locking_script == P2PKH().lock(address)
     assert t.outputs[1].satoshis == 787
-
-    # TODO: re-enable auto change addr
-    # t.outputs.pop()
-    # t.add_change()
-    # assert len(t.outputs) == 2
-    # assert t.outputs[1].locking_script == P2PKH().locking(address)
-    # assert t.outputs[1].value == 787
 
 
 def test_transaction_bytes_io():

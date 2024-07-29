@@ -1,5 +1,6 @@
 from .broadcasters import *
 from .chaintrackers import *
+from .fee_models import *
 from .http_client import HttpClient, default_http_client
 from .keys import verify_signed_text, PublicKey, PrivateKey
 from .merkle_path import MerklePath, MerkleLeaf

@@ -10,10 +10,12 @@ class TransactionOutput:
     def __init__(
             self,
             locking_script: Script,
-            satoshis: int = 0,
+            satoshis: int = None,
+            change: bool = False,
     ):
         self.satoshis = satoshis
         self.locking_script = locking_script
+        self.change = change
 
     def serialize(self) -> bytes:
         return b"".join(
