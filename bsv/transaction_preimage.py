@@ -36,8 +36,8 @@ def _preimage(
     # 3
     stream.write(hash_sequence)
     # 4
-    stream.write(bytes.fromhex(tx_input.txid)[::-1])
-    stream.write(tx_input.vout.to_bytes(4, "little"))
+    stream.write(bytes.fromhex(tx_input.source_txid)[::-1])
+    stream.write(tx_input.source_output_index.to_bytes(4, "little"))
     # 5
     stream.write(tx_input.locking_script.byte_length_varint())
     stream.write(tx_input.locking_script.serialize())
@@ -65,7 +65,7 @@ def tx_preimages(
     """
     _hash_prevouts = hash256(
         b"".join(
-            bytes.fromhex(_in.txid)[::-1] + _in.vout.to_bytes(4, "little")
+            bytes.fromhex(_in.source_txid)[::-1] + _in.source_output_index.to_bytes(4, "little")
             for _in in inputs
         )
     )

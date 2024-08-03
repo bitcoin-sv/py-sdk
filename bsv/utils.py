@@ -558,3 +558,7 @@ class Reader(BytesIO):
         if not octets:
             return None
         return int.from_bytes(octets, byteorder=byteorder)
+    
+    
+def reverse_hex_byte_order(hex_str: str):
+    return bytes.fromhex(hex_str)[::-1].hex()

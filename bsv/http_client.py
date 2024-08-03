@@ -5,7 +5,7 @@ import aiohttp
 
 class HttpClient(ABC):
     @abstractmethod
-    async def fetch(self, url: str, options: dict) -> 'HttpResponse':
+    def fetch(self, url: str, options: dict) -> "HttpResponse":
         pass
 
 
@@ -23,13 +23,19 @@ class DefaultHttpClient(HttpClient):
     async def fetch(self, url: str, options: dict) -> HttpResponse:
         async with aiohttp.ClientSession() as session:
             async with session.request(
-                    method=options['method'],
-                    url=url,
-                    headers=options.get('headers', {}),
-                    data=options.get('body', None)
+                method=options["method"],
+                url=url,
+                headers=options.get("headers", {}),
+                json=options.get("data", None),
             ) as response:
                 json_data = await response.json()
-                return HttpResponse(ok=response.status == 200, status_code=response.status, json_data=json_data)
+                return HttpResponse(
+                    ok=response.status >= 200 and response.status <= 299,
+                    status_code=response.status,
+                    json_data={
+                        'data': json_data
+                    },
+                )
 
 
 def default_http_client() -> HttpClient:

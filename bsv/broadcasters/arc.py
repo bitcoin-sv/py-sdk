@@ -1,10 +1,13 @@
 import json
 import random
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, TYPE_CHECKING
 
 from ..broadcaster import BroadcastResponse, BroadcastFailure, Broadcaster
 from ..http_client import HttpClient, default_http_client
 
+
+if TYPE_CHECKING:
+    from ..transaction import Transaction
 
 def to_hex(bytes_data):
     return "".join(f"{x:02x}" for x in bytes_data)
@@ -16,13 +19,13 @@ def random_hex(length: int) -> str:
 
 class ARCConfig:
     def __init__(
-            self,
-            api_key: Optional[str] = None,
-            http_client: Optional[HttpClient] = None,
-            deployment_id: Optional[str] = None,
-            callback_url: Optional[str] = None,
-            callback_token: Optional[str] = None,
-            headers: Optional[Dict[str, str]] = None,
+        self,
+        api_key: Optional[str] = None,
+        http_client: Optional[HttpClient] = None,
+        deployment_id: Optional[str] = None,
+        callback_url: Optional[str] = None,
+        callback_token: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
     ):
         self.api_key = api_key
         self.http_client = http_client
@@ -56,27 +59,42 @@ class ARC(Broadcaster):
             self.headers = config.headers
 
     async def broadcast(
-            self, raw_tx: str
+        self, tx: 'Transaction'
     ) -> Union[BroadcastResponse, BroadcastFailure]:
         request_options = {
             "method": "POST",
             "headers": self.request_headers(),
-            "data": json.dumps({"rawTx": raw_tx}),
+            "data": {"rawTx": tx.to_ef().hex()},
         }
 
         try:
-            response = await self.http_client.fetch(f"{self.URL}/v1/tx", request_options)
-            data = response.json()
-            if data.get('txid') or response.ok or response.status_code == 200:
-                return BroadcastResponse(status='success', txid=data['txid'],
-                                         message=f"{data.get('txStatus', '')} {data.get('extraInfo', '')}")
+            response = await self.http_client.fetch(
+                f"{self.URL}/v1/tx", request_options
+            )
+            data = response.json()["data"]
+            if data.get("txid") and response.ok and response.status_code >= 200 and response.status_code <= 299:
+                print('testing', data)
+                return BroadcastResponse(
+                    status="success",
+                    txid=data.get("txid"),
+                    message=f"{data.get('txStatus', '')} {data.get('extraInfo', '')}",
+                )
             else:
-                return BroadcastFailure(status='failure', code=data.get('status', 'ERR_UNKNOWN'),
-                                        description=data.get('detail', 'Unknown error'))
+                return BroadcastFailure(
+                    status="failure",
+                    code=data.get("status", "ERR_UNKNOWN"),
+                    description=data.get("detail", "Unknown error"),
+                )
         except Exception as error:
-            print('teest', str(error))
-            return BroadcastFailure(status='failure', code='500',
-                                    description=str(error) if isinstance(error, Exception) else 'Internal Server Error')
+            return BroadcastFailure(
+                status="failure",
+                code="500",
+                description=(
+                    str(error)
+                    if isinstance(error, Exception)
+                    else "Internal Server Error"
+                ),
+            )
 
     def request_headers(self) -> Dict[str, str]:
         headers = {

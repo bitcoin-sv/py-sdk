@@ -34,8 +34,8 @@ def test_complex_case():
     tx.inputs[vin].satoshis = amount
 
     spend = Spend({
-        'sourceTXID': tx.inputs[vin].txid,
-        'sourceOutputIndex': tx.inputs[vin].vout,
+        'sourceTXID': tx.inputs[vin].source_txid,
+        'sourceOutputIndex': tx.inputs[vin].source_output_index,
         'sourceSatoshis': amount,
         'lockingScript': locking_script,
         'transactionVersion': tx.version,

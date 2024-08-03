@@ -27,13 +27,11 @@ class TransactionInput:
         if source_transaction:
             utxo = source_transaction.outputs[source_output_index]
 
-        self.txid: str = source_txid if source_txid else '00' * 32
-        self.vout: int = source_output_index
+        self.source_txid: str = source_txid if source_txid else '00' * 32
+        self.source_output_index: int = source_output_index
         self.satoshis: int = utxo.satoshis if utxo else None
         self.locking_script: Script = utxo.locking_script if utxo else None
-
         self.source_transaction = source_transaction
-
         self.unlocking_script: Script = unlocking_script
         self.unlocking_script_template = unlocking_script_template
         self.sequence: int = sequence
@@ -41,8 +39,8 @@ class TransactionInput:
 
     def serialize(self) -> bytes:
         stream = BytesIO()
-        stream.write(bytes.fromhex(self.txid)[::-1])
-        stream.write(self.vout.to_bytes(4, "little"))
+        stream.write(bytes.fromhex(self.source_txid)[::-1])
+        stream.write(self.source_output_index.to_bytes(4, "little"))
         stream.write(
             self.unlocking_script.byte_length_varint()
             if self.unlocking_script
@@ -55,7 +53,7 @@ class TransactionInput:
         return stream.getvalue()
 
     def __str__(self) -> str:  # pragma: no cover
-        return (f"<TransactionInput outpoint={self.txid}:{self.vout} "
+        return (f"<TransactionInput outpoint={self.source_txid}:{self.source_output_index} "
                 f"value={self.satoshis} locking_script={self.locking_script}>")
 
     def __repr__(self) -> str:  # pragma: no cover

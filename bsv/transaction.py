@@ -19,7 +19,7 @@ from .script.type import P2PKH
 from .transaction_input import TransactionInput
 from .transaction_output import TransactionOutput
 from .transaction_preimage import tx_preimage
-from .utils import unsigned_to_varint, Reader, Writer
+from .utils import unsigned_to_varint, Reader, Writer, reverse_hex_byte_order
 
 
 class InsufficientFunds(ValueError):
@@ -189,7 +189,7 @@ class Transaction:
         for tx_in in self.inputs:
             if not tx_in.source_transaction:
                 raise ValueError('Source transactions are required for all inputs during fee computation')
-            change += tx_in.source_transaction.outputs[tx_in.vout].satoshis
+            change += tx_in.source_transaction.outputs[tx_in.source_output_index].satoshis
         
         change -= fee
         
@@ -216,12 +216,12 @@ class Transaction:
                 if out.change:
                     out.satoshis = per_output
 
-    def broadcast(
+    async def broadcast(
             self,
             broadcaster: Broadcaster = default_broadcaster(),
             check_fee: bool = True
     ) -> BroadcastResponse:  # pragma: no cover
-        return broadcaster.broadcast(self.raw())
+        return await broadcaster.broadcast(self)
 
     @classmethod
     def from_hex(cls, stream: Union[str, bytes, Reader]) -> Optional["Transaction"]:
@@ -275,10 +275,10 @@ class Transaction:
                 item["tx"].merkle_path = path
             else:
                 for tx_input in item["tx"].inputs:
-                    source_obj = transactions[tx_input.txid]
+                    source_obj = transactions[tx_input.source_txid]
                     if not isinstance(source_obj, dict):
                         raise ValueError(
-                            f"Reference to unknown TXID in BUMP: {tx_input.txid}"
+                            f"Reference to unknown TXID in BUMP: {tx_input.source_txid}"
                         )
                     tx_input.source_transaction = source_obj["tx"]
                     add_path_or_inputs(source_obj)
@@ -286,7 +286,7 @@ class Transaction:
         add_path_or_inputs(transactions[last_txid])
         return transactions[last_txid]["tx"]
 
-    def to_ef(self):
+    def to_ef(self) -> bytes:
         writer = Writer()
         writer.write_uint32_le(self.version)
         writer.write(bytes.fromhex('0000000000ef'))
@@ -295,14 +295,17 @@ class Transaction:
         for i in self.inputs:
             if i.source_transaction is None:
                 raise ValueError('All inputs must have source transactions when serializing to EF format')
-            writer.write(i.source_transaction.hash())
-            writer.write_uint32_le(i.vout)
+            if i.source_txid and i.source_txid != '00' * 32:
+                writer.write(bytes.fromhex(reverse_hex_byte_order(i.source_txid)))
+            else:
+                writer.write(i.source_transaction.hash())
+            writer.write_uint32_le(i.source_output_index)
             script_bin = i.unlocking_script.serialize()
             writer.write_var_int_num(len(script_bin))
             writer.write(script_bin)
             writer.write_uint32_le(i.sequence)
-            writer.write_uint64_le(i.source_transaction.outputs[i.vout].satoshis)
-            locking_script_bin = i.source_transaction.outputs[i.vout].locking_script.serialize()
+            writer.write_uint64_le(i.source_transaction.outputs[i.source_output_index].satoshis)
+            locking_script_bin = i.source_transaction.outputs[i.source_output_index].locking_script.serialize()
             writer.write_var_int_num(len(locking_script_bin))
             writer.write(locking_script_bin)
 
@@ -407,7 +410,7 @@ class Transaction:
                     f"This script is required for transaction verification because there is no "
                     f"merkle proof for the transaction spending the UTXO.")
 
-            source_output = tx_input.source_transaction.outputs[tx_input.vout]
+            source_output = tx_input.source_transaction.outputs[tx_input.source_output_index]
             input_total += source_output.satoshis
 
             input_verified = tx_input.source_transaction.verify(chaintracker)
@@ -417,7 +420,7 @@ class Transaction:
             other_inputs = self.inputs[:i] + self.inputs[i + 1:]
             spend = Spend({
                 'sourceTXID': tx_input.source_transaction.txid(),
-                'sourceOutputIndex': tx_input.vout,
+                'sourceOutputIndex': tx_input.source_output_index,
                 'sourceSatoshis': source_output.satoshis,
                 'lockingScript': source_output.locking_script,
                 'transactionVersion': self.version,
