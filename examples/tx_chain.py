@@ -3,7 +3,6 @@ from bsv import (
     Transaction,
     TransactionInput,
     TransactionOutput,
-    PublicKey,
     PrivateKey,
     P2PKH,
     BroadcastResponse,

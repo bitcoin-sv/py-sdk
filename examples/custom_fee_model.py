@@ -1,10 +1,9 @@
 import asyncio
-from typing import Union
+import math
 from bsv import (
     Transaction,
     TransactionInput,
     TransactionOutput,
-    PublicKey,
     PrivateKey,
     P2PKH,
     FeeModel,
