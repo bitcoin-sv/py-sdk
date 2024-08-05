@@ -1,3 +1,4 @@
+import tempfile
 import hashlib
 import hmac
 from base64 import b64encode, b64decode
@@ -10,7 +11,7 @@ from .aes_cbc import aes_encrypt_with_iv
 from .base58 import base58check_encode
 from .constants import Network, NETWORK_ADDRESS_PREFIX_DICT, NETWORK_WIF_PREFIX_DICT, PUBLIC_KEY_COMPRESSED_PREFIX_LIST
 from .curve import Point
-from .curve import curve, multiply as curve_multiply, add as curve_add
+from .curve import curve, curve_multiply as curve_multiply, curve_add as curve_add
 from .hash import hash160, hash256, hmac_sha256
 from .utils import decode_wif, text_digest, stringify_ecdsa_recoverable, unstringify_ecdsa_recoverable
 from .utils import deserialize_ecdsa_recoverable, serialize_ecdsa_der
@@ -207,11 +208,59 @@ class PrivateKey:
     def pem(self) -> bytes:  # pragma: no cover
         return self.key.to_pem()
 
-    def sign(self, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bytes:
+    def sign(self, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256, k: Optional[int] = None) -> bytes:
         """
         :returns: ECDSA signature in bitcoin strict DER (low-s) format
         """
+        if k:
+            return self._sign_custom_k(message, hasher, k)
         return self.key.sign(message, hasher)
+    
+    def _sign_custom_k(self, message: bytes, hasher: Callable[[bytes], bytes], k: int) -> bytes:
+        # TODO: This could be done using self.key.sign() but the interface needs a custom k value function to be injected into te C binary
+        #       of libsecp256k1, since the default one does some transformations to the value.
+        #       See https://github.com/rustyrussell/secp256k1-py/blob/5bad581d959d722bf6c2df5eaa996fd4c24096aa/tests/test_custom_nonce.py#L51ffi%20=%20FFI()
+        #           https://github.com/bitcoin-core/secp256k1/blob/master/src/secp256k1.c#L518
+
+        z = int.from_bytes(hasher(message), 'big')
+
+        # Ensure k is valid
+        k = k % curve.n
+        if k == 0:
+            raise ValueError("Invalid nonce k")
+
+        # Compute R = k * G and obtain its x-coordinate (r)
+        R = curve_multiply(k, curve.g)
+        if R is None:
+            raise ValueError("Invalid R value")
+        r = R.x
+
+        # Compute s = k^(-1) * (z + r * d) mod n
+        d = int.from_bytes(self.serialize(), 'big')
+        s = (pow(k, -1, curve.n) * (z + r * d)) % curve.n
+        if s == 0:
+            raise ValueError("Invalid s value")
+
+        # Ensure the signature is canonical (low S value)
+        if s > curve.n // 2:
+            s = curve.n - s
+
+        # Convert r and s to bytes
+        r_bytes = r.to_bytes(32, 'big')
+        s_bytes = s.to_bytes(32, 'big')
+
+        # Add prefix if the MSB is set
+        if r_bytes[0] & 0x80:
+            r_bytes = b'\x00' + r_bytes
+        if s_bytes[0] & 0x80:
+            s_bytes = b'\x00' + s_bytes
+
+        # Serialize the signature in DER format
+        signature = b'\x30' + (4 + len(r_bytes) + len(s_bytes)).to_bytes(1, 'big') + \
+                    b'\x02' + len(r_bytes).to_bytes(1, 'big') + r_bytes + \
+                    b'\x02' + len(s_bytes).to_bytes(1, 'big') + s_bytes
+
+        return signature
 
     def verify(self, signature: bytes, message: bytes, hasher: Optional[Callable[[bytes], bytes]] = hash256) -> bool:
         """

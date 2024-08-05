@@ -33,7 +33,7 @@ def on_curve(point: Optional[Point]) -> bool:
     return (y * y - x * x * x - curve.a * x - curve.b) % curve.p == 0
 
 
-def negative(point: Optional[Point]) -> Optional[Point]:
+def curve_negative(point: Optional[Point]) -> Optional[Point]:
     """
     :returns: -point
     """
@@ -47,7 +47,7 @@ def negative(point: Optional[Point]) -> Optional[Point]:
     return r
 
 
-def add(p: Optional[Point], q: Optional[Point]) -> Optional[Point]:
+def curve_add(p: Optional[Point], q: Optional[Point]) -> Optional[Point]:
     """
     :returns: the result of p + q according to the group law
     """
@@ -59,7 +59,7 @@ def add(p: Optional[Point], q: Optional[Point]) -> Optional[Point]:
     if q is None:
         # p + 0 = p
         return p
-    if p == negative(q):
+    if p == curve_negative(q):
         # p == -q
         return None
     # p != -q
@@ -68,7 +68,7 @@ def add(p: Optional[Point], q: Optional[Point]) -> Optional[Point]:
     return r
 
 
-def multiply(scalar: int, point: Optional[Point]) -> Optional[Point]:
+def curve_multiply(scalar: int, point: Optional[Point]) -> Optional[Point]:
     """
     multiply the given point by a scalar
     """
@@ -77,13 +77,13 @@ def multiply(scalar: int, point: Optional[Point]) -> Optional[Point]:
         return None
     if scalar < 0:
         # k * point = -k * (-point)
-        return multiply(-scalar, negative(point))
+        return curve_multiply(-scalar, curve_negative(point))
     r = Point(*CcPublicKey.from_point(*point).multiply((scalar % curve.n).to_bytes(NUMBER_BYTE_LENGTH, 'big')).point())
     assert on_curve(r)
     return r
 
 
-def get_y(x: int, even: bool) -> int:
+def curve_get_y(x: int, even: bool) -> int:
     """
     point (x, y) lies on the curve, calculate y from the given x and the parity of y
     """

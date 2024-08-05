@@ -1,4 +1,4 @@
-from bsv.curve import multiply, curve, Point, get_y, negative, add
+from bsv.curve import curve_multiply, curve, Point, curve_get_y, curve_negative, curve_add
 
 
 def test():
@@ -40,25 +40,25 @@ def test():
         106058046035730461065453431298488283639544320945863068991044987913936484863297
     )
 
-    assert y == get_y(x, y % 2 == 0)
+    assert y == curve_get_y(x, y % 2 == 0)
 
-    assert negative(None) is None
+    assert curve_negative(None) is None
 
-    assert add(p, None) == p
-    assert add(None, p) == p
-    assert add(p, negative(p)) is None
+    assert curve_add(p, None) == p
+    assert curve_add(None, p) == p
+    assert curve_add(p, curve_negative(p)) is None
 
-    assert add(g1, p) == r1
-    assert add(g2, p) == r2
-    assert add(g3, p) == r3
-    assert add(g4, p) == r4
+    assert curve_add(g1, p) == r1
+    assert curve_add(g2, p) == r2
+    assert curve_add(g3, p) == r3
+    assert curve_add(g4, p) == r4
 
-    assert multiply(k, curve.g) == p
-    assert multiply(0, curve.g) is None
-    assert multiply(1, None) is None
-    assert multiply(-k, negative(curve.g)) == Point(x, y)
+    assert curve_multiply(k, curve.g) == p
+    assert curve_multiply(0, curve.g) is None
+    assert curve_multiply(1, None) is None
+    assert curve_multiply(-k, curve_negative(curve.g)) == Point(x, y)
 
-    assert multiply(1, curve.g) == g1
-    assert multiply(2, curve.g) == g2
-    assert multiply(3, curve.g) == g3
-    assert multiply(4, curve.g) == g4
+    assert curve_multiply(1, curve.g) == g1
+    assert curve_multiply(2, curve.g) == g2
+    assert curve_multiply(3, curve.g) == g3
+    assert curve_multiply(4, curve.g) == g4

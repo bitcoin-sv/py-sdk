@@ -7,7 +7,7 @@ from ..constants import BIP32_SEED_BYTE_LENGTH
 from ..constants import NETWORK_XPUB_PREFIX_DICT, NETWORK_XPRV_PREFIX_DICT
 from ..constants import Network, XKEY_BYTE_LENGTH, XKEY_PREFIX_LIST, PUBLIC_KEY_COMPRESSED_PREFIX_LIST
 from ..constants import XPUB_PREFIX_NETWORK_DICT, XPRV_PREFIX_NETWORK_DICT
-from ..curve import curve, add, multiply
+from ..curve import curve, curve_add, curve_multiply
 from ..keys import PublicKey, PrivateKey
 
 
@@ -74,7 +74,7 @@ class Xpub(Xkey):
 
         h: bytes = hmac.new(self.chain_code, self.key.serialize() + index, sha512).digest()
         offset: int = int.from_bytes(h[:32], 'big')
-        child: PublicKey = PublicKey(add(self.key.point(), multiply(offset, curve.g)))
+        child: PublicKey = PublicKey(curve_add(self.key.point(), curve_multiply(offset, curve.g)))
 
         payload += h[32:]
         payload += child.serialize()
