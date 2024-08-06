@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Awaitable
 
 
 class ChainTracker(ABC):
@@ -13,7 +12,7 @@ class ChainTracker(ABC):
     """
 
     @abstractmethod
-    async def is_valid_root_for_height(self, root: str, height: int) -> Awaitable[bool]:
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
         """
         Verify the validity of a Merkle root for a given block height.
 

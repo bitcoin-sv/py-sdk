@@ -131,7 +131,7 @@ validBumps = [
 @pytest.fixture
 def chain_tracker():
     class MockChainTracker(ChainTracker):
-        def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        async def is_valid_root_for_height(self, root: str, height: int) -> bool:
             return root == BRC74Root and height == BRC74JSON["blockHeight"]
 
     return MockChainTracker()

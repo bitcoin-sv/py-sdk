@@ -1,5 +1,5 @@
 # from .chain_tracker import ChainTracker
-from typing import List, Optional, TypedDict, Awaitable
+from typing import List, Optional, TypedDict
 
 from .chaintracker import ChainTracker
 from .hash import hash256
@@ -248,7 +248,7 @@ class MerklePath:
 
         return {"offset": offset, "hash_str": working_hash}
 
-    async def verify(self, txid: str, chaintracker: ChainTracker) -> Awaitable[bool]:
+    async def verify(self, txid: str, chaintracker: ChainTracker) -> bool:
         """
         Verifies if the given transaction ID is part of the Merkle tree at the specified block height.
 
@@ -260,7 +260,8 @@ class MerklePath:
             bool: True if the transaction ID is valid within the Merkle Path at the specified block height.
         """
         root = self.compute_root(txid)
-        return chaintracker.is_valid_root_for_height(root, self.block_height)
+        res = await chaintracker.is_valid_root_for_height(root, self.block_height)
+        return res
 
     def combine(self, other: "MerklePath") -> None:
         """

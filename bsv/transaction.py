@@ -390,20 +390,20 @@ class Transaction:
         return t
 
     async def verify(self, chaintracker: Optional[ChainTracker] = default_chain_tracker(), scripts_only=False) -> bool:
-        if isinstance(self.merkle_path, object) and not scripts_only:
-            proof_valid = self.merkle_path.verify(self.txid(), chaintracker)
+        if self.merkle_path and not scripts_only:
+            proof_valid = await self.merkle_path.verify(self.txid(), chaintracker)
             if proof_valid:
                 return True
 
         input_total = 0
         for i, tx_input in enumerate(self.inputs):
-            if not tx_input.get('source_transaction', False):
+            if not tx_input.source_transaction:
                 raise ValueError(
                     f"Verification failed because the input at index {i} of transaction {self.txid()} "
                     f"is missing an associated source transaction. "
                     f"This source transaction is required for transaction verification because there is no "
                     f"merkle proof for the transaction spending a UTXO it contains.")
-            if not tx_input.get('unlocking_script', False):
+            if not tx_input.unlocking_script:
                 raise ValueError(
                     f"Verification failed because the input at index {i} of transaction {self.txid()} "
                     f"is missing an associated unlocking script. "
@@ -413,7 +413,7 @@ class Transaction:
             source_output = tx_input.source_transaction.outputs[tx_input.source_output_index]
             input_total += source_output.satoshis
 
-            input_verified = tx_input.source_transaction.verify(chaintracker)
+            input_verified = await tx_input.source_transaction.verify(chaintracker)
             if not input_verified:
                 return False
 
@@ -437,7 +437,7 @@ class Transaction:
 
         output_total = 0
         for out in self.outputs:
-            if not isinstance(out.satoshis, int):
+            if not out.satoshis:
                 raise ValueError("Every output must have a defined amount during transaction verification.")
             output_total += out.satoshis
 
