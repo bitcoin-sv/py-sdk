@@ -11,7 +11,7 @@ async def main():
     
     verified = await tx.verify()
     print('BEEF verified:', verified)
-    #assert(verified)
+    assert(verified)
 
 
 asyncio.run(main())
