@@ -71,20 +71,31 @@ class ARC(Broadcaster):
             response = await self.http_client.fetch(
                 f"{self.URL}/v1/tx", request_options
             )
-            data = response.json()["data"]
-            if data.get("txid") and response.ok and response.status_code >= 200 and response.status_code <= 299:
-                print('testing', data)
-                return BroadcastResponse(
-                    status="success",
-                    txid=data.get("txid"),
-                    message=f"{data.get('txStatus', '')} {data.get('extraInfo', '')}",
-                )
+            
+            response_json = response.json()
+            
+            if response.ok and response.status_code >= 200 and response.status_code <= 299:
+                data = response_json["data"]
+
+                if data.get("txid"):
+                    return BroadcastResponse(
+                        status="success",
+                        txid=data.get("txid"),
+                        message=f"{data.get('txStatus', '')} {data.get('extraInfo', '')}",
+                    )
+                else:
+                    return BroadcastFailure(
+                        status="failure",
+                        code=data.get("status", "ERR_UNKNOWN"),
+                        description=data.get("detail", "Unknown error"),
+                    )
             else:
                 return BroadcastFailure(
                     status="failure",
-                    code=data.get("status", "ERR_UNKNOWN"),
-                    description=data.get("detail", "Unknown error"),
+                    code=str(response.status_code),
+                    description=response_json["data"]["detail"] if "data" in response_json else "Unknown error",
                 )
+            
         except Exception as error:
             return BroadcastFailure(
                 status="failure",

@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABCMeta
-from typing import Union, List
+from typing import Union, List, Optional
 
 from .script import Script
 from .unlocking_template import UnlockingScriptTemplate
@@ -7,9 +7,11 @@ from ..constants import (
     OpCode,
     PUBLIC_KEY_HASH_BYTE_LENGTH,
     PUBLIC_KEY_BYTE_LENGTH_LIST,
+    SIGHASH
 )
 from ..keys import PrivateKey
 from ..utils import address_to_public_key_hash, encode_pushdata, encode_int
+from ..hash import hash256
 
 
 def to_unlock_script_template(sign, estimated_unlocking_byte_length):
@@ -200,13 +202,87 @@ class BareMultisig(ScriptTemplate):
             tx_input = tx.inputs[input_index]
             sighash = tx_input.sighash
 
-            script: bytes = OpCode.OP_0
-            for private_key in private_keys:
+            script: bytes = OpCode.OP_0 # Append 0 to satisfy SCRIPT_VERIFY_NULLDUMMY
+            for private_key in private_keys[::-1]:
                 signature = private_key.sign(tx.preimage(input_index))
                 script += encode_pushdata(signature + sighash.to_bytes(1, "little"))
-            return Script(script)
+            return Script(script) 
 
         def estimated_unlocking_byte_length() -> int:
-            return 1 + 73 * len(private_keys)
+            return 1 + 73 * len(private_keys) + 1
+
+        return to_unlock_script_template(sign, estimated_unlocking_byte_length)
+    
+class RPuzzle(ScriptTemplate):
+    
+    def __init__(self, puzzle_type: str = 'raw'):
+        """
+        Constructs an R Puzzle template instance for a given puzzle type.
+
+        :param puzzle_type: Denotes the type of puzzle to create ('raw', 'SHA1', 'SHA256', 'HASH256', 'RIPEMD160', 'HASH160')
+        """
+        assert(puzzle_type in ['raw', 'SHA1', 'SHA256', 'HASH256', 'RIPEMD160', 'HASH160'])
+        self.type = puzzle_type
+
+    def lock(self, value: bytes) -> Script:
+        """
+        Creates an R puzzle locking script for a given R value or R value hash.
+
+        :param value: A byte array representing the R value or its hash.
+        :returns: An R puzzle locking script.
+        """
+        chunks = [
+            OpCode.OP_OVER,
+            OpCode.OP_3,
+            OpCode.OP_SPLIT,
+            OpCode.OP_NIP,
+            OpCode.OP_1,
+            OpCode.OP_SPLIT,
+            OpCode.OP_SWAP,
+            OpCode.OP_SPLIT,
+            OpCode.OP_DROP
+        ]
+        if self.type != 'raw':
+            chunks.append(getattr(OpCode, f'OP_{self.type}'))
+        chunks.append(encode_pushdata(value))
+        chunks.append(OpCode.OP_EQUALVERIFY)
+        chunks.append(OpCode.OP_CHECKSIG)
+        return Script(b''.join(chunks))
+    
+    
+    def unlock(self, k: int, private_key: Optional[PrivateKey] = PrivateKey(), sign_outputs: str = 'all', anyone_can_pay: bool = False):
+        """
+        Creates a function that generates an R puzzle unlocking script along with its signature and length estimation.
+
+        :param k: The K-value used to unlock the R-puzzle.
+        :param private_key: The private key used for signing the transaction.
+        :param sign_outputs: The signature scope for outputs ('all', 'none', 'single').
+        :param anyone_can_pay: Flag indicating if the signature allows for other inputs to be added later.
+        :returns: An object containing the `sign` and `estimate_length` functions.
+        """
+        def sign(tx, input_index) -> Script:
+            sighash = SIGHASH.FORKID
+            if sign_outputs == 'all':
+                sighash |= SIGHASH.ALL
+            elif sign_outputs == 'none':
+                sighash |= SIGHASH.NONE
+            elif sign_outputs == 'single':
+                sighash |= SIGHASH.SINGLE
+            if anyone_can_pay:
+                sighash |= SIGHASH.ANYONECANPAY
+                
+            tx.inputs[input_index].sighash = sighash
+
+            preimage = tx.preimage(input_index)
+
+            sig = private_key.sign(preimage, hasher=hash256, k=k) + sighash.to_bytes(1, "little")
+            pubkey_for_script = private_key.public_key().serialize()
+
+            return Script(encode_pushdata(sig) + encode_pushdata(pubkey_for_script))
+
+        def estimated_unlocking_byte_length() -> int:
+            # public key (1+33) + signature (1+73)
+            # Note: We add 1 to each element's length because of the associated OP_PUSH
+            return 108
 
         return to_unlock_script_template(sign, estimated_unlocking_byte_length)

@@ -28,14 +28,21 @@ class DefaultHttpClient(HttpClient):
                 headers=options.get("headers", {}),
                 json=options.get("data", None),
             ) as response:
-                json_data = await response.json()
-                return HttpResponse(
-                    ok=response.status >= 200 and response.status <= 299,
-                    status_code=response.status,
-                    json_data={
-                        'data': json_data
-                    },
-                )
+                try:
+                    json_data = await response.json()
+                    return HttpResponse(
+                        ok=response.status >= 200 and response.status <= 299,
+                        status_code=response.status,
+                        json_data={
+                            'data': json_data
+                        },
+                    )
+                except Exception as e:
+                    return HttpResponse(
+                        ok=False,
+                        status_code=response.status,
+                        json_data={},
+                    )
 
 
 def default_http_client() -> HttpClient:

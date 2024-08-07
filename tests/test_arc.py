@@ -10,7 +10,7 @@ from bsv.transaction import Transaction
 class TestARCBroadcast(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
-        self.URL = "https://api.taal.com"
+        self.URL = "https://api.taal.com/arc"
         self.api_key = "apikey_85678993923y454i4jhd803wsd02"
         self.tx = Transaction(tx_data="Hello sCrypt")
 
@@ -59,7 +59,7 @@ class TestARCBroadcast(unittest.IsolatedAsyncioTestCase):
         result = await arc.broadcast(self.tx)
 
         self.assertIsInstance(result, BroadcastFailure)
-        self.assertEqual(result.code, "ERR_BAD_REQUEST")
+        self.assertEqual(result.code, "400")
         self.assertEqual(result.description, "Invalid transaction")
 
     async def test_broadcast_exception(self):

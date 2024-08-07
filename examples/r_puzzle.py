@@ -102,8 +102,10 @@ async def main():
     public_key = private_key.public_key()
     
     k = PrivateKey().int()
-    G: Point = curve.g
-    r = curve_multiply(k, G).x % curve.n
+
+    k_priv = PrivateKey()
+    k = k_priv.int()
+    r = k_priv.public_key().point().x  # R = k*G, R.x
     
     r_bytes = r.to_bytes(32, byteorder='big')
     if r_bytes[0] > 0x7f:
