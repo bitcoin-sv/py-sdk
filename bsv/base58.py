@@ -27,6 +27,27 @@ def base58check_encode(payload: bytes) -> str:
     return b58_encode(payload + _checksum(payload))
 
 
+def to_base58check(payload: bytes, prefix: bytes) -> str:
+    """
+    Converts a binary array into a base58check string with a checksum
+    :param payload: The binary array to convert to base58check
+    :param prefix: The prefix to add to the binary
+    :return: The base58check string representation
+    """
+    return base58check_encode(prefix + payload)
+
+
+def from_base58check(encoded: str, prefix_len: int = 1) -> (bytes, bytes):
+    """
+    Converts a base58check string into payload and prefix
+    :param encoded: The base58check string to convert
+    :param prefix_len: The byte length of the prefix
+    :return: A tuple containing the prefix and the payload
+    """
+    payload = base58check_decode(encoded)
+    return payload[:prefix_len], payload[prefix_len:]
+
+
 def b58_decode(encoded: str) -> bytes:
     pad = 0
     for char in encoded:
