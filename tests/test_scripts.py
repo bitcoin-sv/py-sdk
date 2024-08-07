@@ -7,7 +7,7 @@ from bsv.script.script import Script
 from bsv.script.type import P2PKH, OpReturn, P2PK, BareMultisig, RPuzzle
 from bsv.transaction import Transaction, TransactionInput, TransactionOutput
 from bsv.utils import address_to_public_key_hash, encode_pushdata, encode_int
-from bsv.curve import curve_multiply, curve
+from bsv.curve import curve_multiply, curve, Point
 
 
 def test_script():
