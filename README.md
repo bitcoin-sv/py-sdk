@@ -34,7 +34,34 @@ pip install bsv-sdk
 ### Basic Usage
 
 ```python
-# TODO: Code Example Will Go Here
+from bsv import (
+    PrivateKey, P2PKH, Transaction, TransactionInput, TransactionOutput, ARC
+)
+
+
+priv_key = PrivateKey.from_wif('...')
+
+source_tx = Transaction.from_hex('...')
+
+version = 1
+
+tx_input = TransactionInput(
+  source_transaction=source_tx,
+  source_output_index=0,
+  unlocking_script_template: P2PKH().unlock(priv_key),
+}
+
+tx_output = TransactionOutput(
+  locking_script: P2PKH().lock(priv_key.address()),
+  change=True
+}
+
+tx = Transaction([input], [output], version)
+
+tx.fee()
+tx.sign()
+
+await tx.broadcast()
 ```
 
 For a more detailed tutorial and advanced examples, check our [Documentation](#documentation).
