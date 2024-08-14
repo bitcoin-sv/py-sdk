@@ -34,34 +34,46 @@ pip install bsv-sdk
 ### Basic Usage
 
 ```python
+import asyncio
 from bsv import (
-    PrivateKey, P2PKH, Transaction, TransactionInput, TransactionOutput, ARC
+    PrivateKey, P2PKH, Transaction, TransactionInput, TransactionOutput
 )
 
 
-priv_key = PrivateKey.from_wif('...')
+# Replace with your private key (WIF format)
+PRIVATE_KEY = 'KyEox4cjFbwR---------VdgvRNQpDv11nBW2Ufak'
 
-source_tx = Transaction.from_hex('...')
+# Replace with your source tx which contains UTXO that you want to spend (raw hex format)
+SOURCE_TX_HEX = '01000000018128b0286d9c6c7b610239bfd8f6dcaed43726ca57c33aa43341b2f360430f23020000006b483045022100b6a60f7221bf898f48e4a49244e43c99109c7d60e1cd6b1f87da30dce6f8067f02203cac1fb58df3d4bf26ea2aa54e508842cb88cc3b3cec9b644fb34656ff3360b5412102cdc6711a310920d8fefbe8ee73b591142eaa7f8668e6be44b837359bfa3f2cb2ffffffff0201000000000000001976a914dd2898df82e086d729854fc0d35a449f30f3cdcc88acce070000000000001976a914dd2898df82e086d729854fc0d35a449f30f3cdcc88ac00000000'
 
-version = 1
+async def create_and_broadcast_transaction():
+    priv_key = PrivateKey(PRIVATE_KEY)
+    source_tx = Transaction.from_hex(SOURCE_TX_HEX)
 
-tx_input = TransactionInput(
-  source_transaction=source_tx,
-  source_output_index=0,
-  unlocking_script_template: P2PKH().unlock(priv_key),
-}
+    tx_input = TransactionInput(
+        source_transaction=source_tx,
+        source_txid=source_tx.txid(),
+        source_output_index=1,
+        unlocking_script_template=P2PKH().unlock(priv_key),
+    )
 
-tx_output = TransactionOutput(
-  locking_script: P2PKH().lock(priv_key.address()),
-  change=True
-}
+    tx_output = TransactionOutput(
+        locking_script=P2PKH().lock(priv_key.address()),
+        change=True
+    )
 
-tx = Transaction([input], [output], version)
+    tx = Transaction([tx_input], [tx_output], version=1)
 
-tx.fee()
-tx.sign()
+    tx.fee()
+    tx.sign()
 
-await tx.broadcast()
+    await tx.broadcast()
+
+    print(f"Transaction ID: {tx.txid()}")
+    print(f"Raw hex: {tx.hex()}")
+
+if __name__ == "__main__":
+    asyncio.run(create_and_broadcast_transaction())
 ```
 
 For a more detailed tutorial and advanced examples, check our [Documentation](#documentation).
@@ -76,8 +88,7 @@ For a more detailed tutorial and advanced examples, check our [Documentation](#d
 
 ## Documentation
 
-Provide detailed information and links to the various places the project is documented, including concepts, getting started guides,
-tutorials, and API specifications.
+Detailed documentation of the SDK with code examples can be found at [BSV Skills Center](https://docs.bsvblockchain.org/guides/sdks/py).
 
 ## Contribution Guidelines
 
