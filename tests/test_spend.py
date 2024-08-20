@@ -6,6 +6,7 @@ from .spend_vector import SPEND_VALID_CASES
 
 def test():
     for case in SPEND_VALID_CASES:
+        print(case)
         spend = Spend({
             'sourceTXID': '0000000000000000000000000000000000000000000000000000000000000000',
             'sourceOutputIndex': 0,
