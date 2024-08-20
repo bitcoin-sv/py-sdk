@@ -23,6 +23,13 @@ from bsv import (
 )
 
 
+"""
+This example demonstrates the implementation of a custom script template for constructing specialized locking and unlocking scripts. 
+Specifically, it focuses on creating a script template for an R-Puzzle, a script that requires proof of knowledge of a value k for unlocking,
+without actually revealing k.
+
+For further details on R-Puzzles, visit: https://bsv.brc.dev/scripts/0017.
+"""
 class RPuzzle(ScriptTemplate):
     
     def __init__(self, puzzle_type: str = 'raw'):

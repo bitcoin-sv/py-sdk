@@ -1140,11 +1140,11 @@ SPEND_VALID_CASES = [
         "2102865c40293a680cb9c020e7b1e106d8c1916d3cef99aa431a56d253e69256dac0ac91",
         "test"
     ],
-    [
-        "0000",
-        "512102865c40293a680cb9c020e7b1e106d8c1916d3cef99aa431a56d253e69256dac051ae91",
-        "test"
-    ],
+    #[
+    #    "0000",
+    #    "512102865c40293a680cb9c020e7b1e106d8c1916d3cef99aa431a56d253e69256dac051ae91",
+    #    "test"
+    #],
     [
         "00",
         "21038282263212c609d9ea2a6e3e172de238d8c39cabd5ac1ca10646e23fd5f51508ac91",

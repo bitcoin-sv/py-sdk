@@ -203,7 +203,7 @@ class BareMultisig(ScriptTemplate):
             sighash = tx_input.sighash
 
             script: bytes = OpCode.OP_0 # Append 0 to satisfy SCRIPT_VERIFY_NULLDUMMY
-            for private_key in private_keys[::-1]:
+            for private_key in private_keys:
                 signature = private_key.sign(tx.preimage(input_index))
                 script += encode_pushdata(signature + sighash.to_bytes(1, "little"))
             return Script(script) 

@@ -155,9 +155,13 @@ def test_p2pk():
 
 def test_bare_multisig():
     privs = [PrivateKey(), PrivateKey(), PrivateKey()]
-    pubs = [privs[0].public_key().hex(), privs[1].public_key().serialize(compressed=False),
-            privs[2].public_key().serialize()]
+    pubs = [
+        privs[0].public_key().serialize(), 
+        privs[1].public_key().serialize(),
+        privs[2].public_key().serialize()
+    ]
     encoded_pks = b''.join([encode_pushdata(pk if isinstance(pk, bytes) else bytes.fromhex(pk)) for pk in pubs])
+
     expected_locking = encode_int(2) + encoded_pks + encode_int(3) + OpCode.OP_CHECKMULTISIG
     assert BareMultisig().lock(pubs, 2).serialize() == expected_locking
     
@@ -190,21 +194,20 @@ def test_bare_multisig():
     assert isinstance(unlocking_script, Script)
     assert unlocking_script.byte_length() >= 144
     
-    # TODO: Fix
-    #spend = Spend({
-    #    'sourceTXID': tx.inputs[0].source_txid,
-    #    'sourceOutputIndex': tx.inputs[0].source_output_index,
-    #    'sourceSatoshis': source_tx.outputs[0].satoshis,
-    #    'lockingScript': source_tx.outputs[0].locking_script,
-    #    'transactionVersion': tx.version,
-    #    'otherInputs': [],
-    #    'inputIndex': 0,
-    #    'unlockingScript': tx.inputs[0].unlocking_script,
-    #    'outputs': tx.outputs,
-    #    'inputSequence': tx.inputs[0].sequence,
-    #    'lockTime': tx.locktime,
-    #})
-    #assert spend.validate()
+    spend = Spend({
+        'sourceTXID': tx.inputs[0].source_txid,
+        'sourceOutputIndex': tx.inputs[0].source_output_index,
+        'sourceSatoshis': source_tx.outputs[0].satoshis,
+        'lockingScript': source_tx.outputs[0].locking_script,
+        'transactionVersion': tx.version,
+        'otherInputs': [],
+        'inputIndex': 0,
+        'unlockingScript': tx.inputs[0].unlocking_script,
+        'outputs': tx.outputs,
+        'inputSequence': tx.inputs[0].sequence,
+        'lockTime': tx.locktime,
+    })
+    assert spend.validate()
 
 
 def test_is_push_only():

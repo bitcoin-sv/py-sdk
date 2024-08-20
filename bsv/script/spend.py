@@ -609,7 +609,7 @@ class Spend:
                 # ikey2 is the position of last non-signature item in the stack. Top stack item = 1.
                 # With SCRIPT_VERIFY_NULLFAIL, this is used for cleanup if operation fails.
                 i_key2 = keys_count + 2
-
+                
                 if len(self.stack) < i:
                     _m = f'{_codename} requires the number of stack items not to be less than the number of keys used.'
                     self.script_evaluation_error(_m)
@@ -646,9 +646,9 @@ class Spend:
                         self.script_evaluation_error(_m)
 
                     # TODO
-                    f = self.verify_signature(buf_sig, buf_pub_key, sub_script)
+                    f_verify = self.verify_signature(buf_sig, buf_pub_key, sub_script)
 
-                    if f:
+                    if f_verify:
                         i_sig += 1
                         sigs_count -= 1
                     i_key += 1
