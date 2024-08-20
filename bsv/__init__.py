@@ -16,6 +16,8 @@ from .merkle_path import MerklePath, MerkleLeaf
 from .transaction import Transaction, InsufficientFunds
 from .transaction_input import TransactionInput
 from .transaction_output import TransactionOutput
+from .encrypted_message import *
+from .signed_message import *
 
 
 __version__ = '0.4.0'
