@@ -10,8 +10,15 @@ from bsv import (
     ChainTracker
 )
 
+"""
+This example demonstrates how to use a custom ChainTracker implementation to 
+verify Merkle proofs against a local Block Headers Service, formerly known as 'Pulse'.
 
-class PulseChainTracker(ChainTracker):
+The code shows how to integrate a block header validation service with the BEEF 
+transaction verification process. This is crucial for SPV (Simplified Payment Verification) 
+checks, on which many wallets rely upon.
+"""
+class BHSChainTracker(ChainTracker):
 
     def __init__(
             self,
@@ -63,16 +70,12 @@ async def main():
     tx = Transaction.from_beef(BEEF_hex)
     print('TXID:', tx.txid())
     
-    verified = await tx.verify(PulseChainTracker(
+    verified = await tx.verify(BHSChainTracker(
         URL='http://localhost:8080',
         api_key='mQZQ6WmxURxWz5ch' 
     ))
     print('BEEF verified:', verified)
     assert(verified)
-
-
-asyncio.run(main())
-
 
 
 asyncio.run(main())
