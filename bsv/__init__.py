@@ -20,4 +20,4 @@ from .encrypted_message import *
 from .signed_message import *
 
 
-__version__ = '0.5.0'
+__version__ = '0.5.1'
