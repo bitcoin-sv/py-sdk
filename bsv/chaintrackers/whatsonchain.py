@@ -25,7 +25,7 @@ class WhatsOnChainTracker(ChainTracker):
             f"{self.URL}/block/{height}/header", request_options
         )
         if response.ok:
-            merkleroot = response.json()["data"]["merkleroot"]
+            merkleroot = response.json()['data'].get("merkleroot")
             return merkleroot == root
         elif response.status_code == 404:
             return False
@@ -35,9 +35,7 @@ class WhatsOnChainTracker(ChainTracker):
             )
 
     def get_headers(self) -> Dict[str, str]:
-        headers = {
-            "Accept": "application/json",
-        }
+        headers = {}
         if self.api_key:
             headers["Authorization"] = self.api_key
         return headers
