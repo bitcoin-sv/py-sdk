@@ -27,7 +27,10 @@ class TransactionInput:
         if source_transaction:
             utxo = source_transaction.outputs[source_output_index]
 
-        self.source_txid: str = source_txid if source_txid else '00' * 32
+        self.source_txid = source_txid
+        if source_transaction and not source_txid:
+            self.source_txid = source_transaction.txid()
+
         self.source_output_index: int = source_output_index
         self.satoshis: int = utxo.satoshis if utxo else None
         self.locking_script: Script = utxo.locking_script if utxo else None
