@@ -1,3 +1,5 @@
+import pytest 
+
 from bsv.constants import SIGHASH
 from bsv.hash import hash256
 from bsv.keys import PrivateKey
@@ -641,6 +643,28 @@ def test_ef_serialization():
     ef = tx.to_ef()
     expected_ef = "010000000000000000ef01478a4ac0c8e4dae42db983bc720d95ed2099dec4c8c3f2d9eedfbeb74e18cdbb1b0100006b483045022100b05368f9855a28f21d3cb6f3e278752d3c5202f1de927862bbaaf5ef7d67adc50220728d4671cd4c34b1fa28d15d5cd2712b68166ea885522baa35c0b9e399fe9ed74121030d4ad284751daf629af387b1af30e02cf5794139c4e05836b43b1ca376624f7fffffffff10000000000000001976a9140c77a935b45abdcf3e472606d3bc647c5cc0efee88ac01000000000000000070006a0963657274696861736822314c6d763150594d70387339594a556e374d3948565473446b64626155386b514e4a406164386337373536356335363935353261626463636634646362353537376164633936633866613933623332663630373865353664666232326265623766353600000000"
     assert ef.hex() == expected_ef
+
+
+def test_input_auto_txid():
+    prev_tx = Transaction.from_hex('0100000001478a4ac0c8e4dae42db983bc720d95ed2099dec4c8c3f2d9eedfbeb74e18cdbb1b0100006b483045022100b05368f9855a28f21d3cb6f3e278752d3c5202f1de927862bbaaf5ef7d67adc50220728d4671cd4c34b1fa28d15d5cd2712b68166ea885522baa35c0b9e399fe9ed74121030d4ad284751daf629af387b1af30e02cf5794139c4e05836b43b1ca376624f7fffffffff01000000000000000070006a0963657274696861736822314c6d763150594d70387339594a556e374d3948565473446b64626155386b514e4a406164386337373536356335363935353261626463636634646362353537376164633936633866613933623332663630373865353664666232326265623766353600000000')
+    
+    private_key = PrivateKey("L5agPjZKceSTkhqZF2dmFptT5LFrbr6ZGPvP7u4A6dvhTrr71WZ9")
+
+    tx_in = TransactionInput(
+        source_transaction=prev_tx,
+        source_output_index=0,
+        unlocking_script_template=P2PKH().unlock(private_key),
+    )
+    
+    assert tx_in.source_txid == 'e6adcaf6b86fb5d690a3bade36011cd02f80dd364f1ecf2bb04902aa1b6bf455'
+    
+    prev_tx.outputs[0].locking_script = None
+    with pytest.raises(Exception):
+        tx_in = TransactionInput(
+            source_transaction=prev_tx,
+            source_output_index=0,
+            unlocking_script_template=P2PKH().unlock(private_key),
+        )
 
 
 # TODO: Test tx.verify()
