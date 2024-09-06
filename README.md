@@ -90,6 +90,9 @@ For a more detailed tutorial and advanced examples, check our [Documentation](#d
 
 Detailed documentation of the SDK with code examples can be found at [BSV Skills Center](https://docs.bsvblockchain.org/guides/sdks/py).
 
+You can also refer to the [User Test Report](./docs/Py-SDK%20User%20Test%20Report.pdf) for insights and feedback provided by
+[Yenpoint](https://yenpoint.jp/).
+
 ## Contribution Guidelines
 
 We're always looking for contributors to help us improve the project. Whether it's bug reports, feature requests, or pull requests - all
