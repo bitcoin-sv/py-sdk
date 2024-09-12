@@ -9,4 +9,8 @@ with open('bsv/__init__.py', 'r') as f:
 setup(
     version=version,
     packages=find_packages(exclude=('tests',)),
+    install_requires=[
+        'aiohttp==3.9.5',
+    ],
+    include_package_data=True,
 )
