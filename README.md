@@ -4,10 +4,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 [![Python versions](https://img.shields.io/pypi/pyversions/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 
-Welcome to the BSV Blockchain Libraries Project, the comprehensive Python SDK designed to provide an updated and unified layer for
-developing scalable applications on the BSV Blockchain. This SDK addresses the limitations of previous tools by offering a fresh,
-peer-to-peer approach, adhering to SPV, and ensuring privacy and scalability.
 
+Welcome to the BSV Blockchain Libraries Project, the comprehensive Python SDK designed to provide an updated and unified layer for developing scalable applications on the BSV Blockchain. This SDK addresses the limitations of previous tools by offering a fresh, peer-to-peer approach, adhering to SPV, and ensuring privacy and scalability.
 ## Table of Contents
 
 1. [Objective](#objective)
@@ -19,11 +17,14 @@ peer-to-peer approach, adhering to SPV, and ensuring privacy and scalability.
 
 ## Objective
 
-The BSV Blockchain Libraries Project aims to structure and maintain a middleware layer of the BSV Blockchain technology stack. By
-facilitating the development and maintenance of core libraries, it serves as an essential toolkit for developers looking to build on the BSV
-Blockchain.
+The BSV Blockchain Libraries Project aims to structure and maintain a middleware layer of the BSV Blockchain technology stack. By facilitating the development and maintenance of core libraries, it serves as an essential toolkit for developers looking to build on the BSV Blockchain.
 
 ## Getting Started
+
+### Requirements
+
+Python 3.9 or higher
+pip package manager
 
 ### Installation
 
@@ -80,11 +81,28 @@ For a more detailed tutorial and advanced examples, check our [Documentation](#d
 
 ## Features & Deliverables
 
-- **Main Project Feature**: Description of the feature
+### Advanced Transaction Building:
 
-- **Main Project Feature 2**: Description of the feature
+* Support for P2PKH, P2PK, OP_RETURN, and BareMultisig scripts
+* Automated fee calculation and change output management
+* Custom script development
+* Support for various SIGHASH types
 
-- **Secondary Project Feature**: Description of the feature
+
+### HD Wallet Capabilities:
+
+* Full BIP32/39/44 implementation for hierarchical deterministic wallets
+* Multiple language support for mnemonic phrases (English, Chinese)
+* Advanced key derivation and management
+
+
+### SPV & Validation:
+
+* Built-in SPV verification with BEEF format support
+* Merkle proof validation
+* Efficient transaction broadcast with Arc
+* Support for chain tracking and verification
+
 
 ## Documentation
 
@@ -107,16 +125,11 @@ contributions are welcome.
 
 For more details, check the [contribution guidelines](./CONTRIBUTING.md).
 
-For information on past releases, check out the [changelog](./CHANGELOG.md). For future plans, check the [roadmap](./ROADMAP.md)!
-
 ## Support & Contacts
-
-Project Owners: `<names and email addresses>`
-
-Development Team Lead: `<name and email>`
-
+Project Owners: Thomas Giacomo and Darren Kellenschwiler
+Development Team Lead: sCrypt
+Maintainer: Ken Sato @ Yenpoint inc. & Yosuke Sato @ Yenpoint inc.
 For questions, bug reports, or feature requests, please open an issue on GitHub or contact us directly.
-
 ## License
 
 The license for the code in this repository is the Open BSV License. Refer to [LICENSE.txt](./LICENSE.txt) for the license text.

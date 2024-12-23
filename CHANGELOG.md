@@ -7,69 +7,58 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## Table of Contents
 
 - [Unreleased](#unreleased)
-- [1.0.0 - YYYY-MM-DD](#100---yyyy-mm-dd)
+- [1.0.0 - 2024-12-23](#100---2024-12-23)
+- [0.5.2 - 2024-09-02](#052---2024-09-02)
+- [0.1.0 - 2024-04-09](#010---2024-04-09)
+
+---
 
 ## [Unreleased]
 
 ### Added
-
 - (Include new features or significant user-visible enhancements here.)
 
 ### Changed
-
 - (Detail modifications that are non-breaking but relevant to the end-users.)
 
 ### Deprecated
-
 - (List features that are in the process of being phased out or replaced.)
 
 ### Removed
-
 - (Indicate features or capabilities that were taken out of the project.)
 
 ### Fixed
-
 - (Document bugs that were fixed since the last release.)
 
 ### Security
-
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
 
 ---
 
-## [1.0.0] - YYYY-MM-DD
+## [1.0.0] - 2024-12-23
 
 ### Added
-
-- Initial release
+- Fixed miner-related bugs.
+- Improved documentation and updated the PyPI version.
+- Implemented bug fixes and improvements based on feedback from the Yenpoint user test.
 
 ---
 
-### Template for New Releases:
+## [0.5.2] - 2024-09-02
+
+### Added
+- Basic functions developed by the Script team.
+
+---
+
+## [0.1.0] - 2024-04-09
+
+### Added
+- Initial release.
+
+---
+
+### Template for New Releases
 
 Replace `X.X.X` with the new version number and `YYYY-MM-DD` with the release date:
 
-```
-## [X.X.X] - YYYY-MM-DD
-
-### Added
-- 
-
-### Changed
-- 
-
-### Deprecated
-- 
-
-### Removed
-- 
-
-### Fixed
-- 
-
-### Security
-- 
-```
-
-Use this template as the starting point for each new version. Always update the "Unreleased" section with changes as they're implemented,
-and then move them under the new version header when that version is released.
