@@ -34,6 +34,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
 
 ---
+## [1.0.1] - 2025-01-09
+
+### Added
+- Enhanced WhatsOnChainBroadcaster network handling:
+ - Added support for Network enum initialization (Network.MAINNET/Network.TESTNET)
+ - Added robust backward compatibility for string network parameters ('main'/'test'/'mainnet'/'testnet')
+ - Added input validation and clear error messages for invalid network parameters
+ - Added type hints and docstrings for better code clarity
+- Added comprehensive test suite for WhatsOnChainBroadcaster:
+ - Added test cases for Network enum initialization
+ - Added test cases for string-based network parameters
+ - Added validation tests for invalid network inputs
+ - Added URL construction validation tests
+
+---
+
 
 ## [1.0.0] - 2024-12-23
 
