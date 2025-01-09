@@ -2,14 +2,31 @@ from typing import Union, TYPE_CHECKING
 
 from ..broadcaster import Broadcaster, BroadcastFailure, BroadcastResponse
 from ..http_client import HttpClient, default_http_client
+from ..constants import Network
 
 if TYPE_CHECKING:
     from ..transaction import Transaction
 
 class WhatsOnChainBroadcaster(Broadcaster):
-    def __init__(self, network: str = "main", http_client: HttpClient = None):
-        self.network = network
-        self.URL = f"https://api.whatsonchain.com/v1/bsv/{network}/tx/raw"
+    def __init__(self, network: Union[Network, str] = Network.MAINNET, http_client: HttpClient = None):
+        """
+        Initialize WhatsOnChainBroadcaster.
+        
+        :param network: Network to broadcast to. Can be either Network enum or string ('main'/'test')
+        :param http_client: Optional HTTP client to use for requests
+        """
+        if isinstance(network, str):
+            network_str = network.lower()
+            if network_str in ['main', 'mainnet']:
+                self.network = 'main'
+            elif network_str in ['test', 'testnet']:
+                self.network = 'test'
+            else:
+                raise ValueError(f"Invalid network string: {network}. Must be 'main' or 'test'")
+        else:
+            self.network = 'main' if network == Network.MAINNET else 'test'
+            
+        self.URL = f"https://api.whatsonchain.com/v1/bsv/{self.network}/tx/raw"
         self.http_client = http_client if http_client else default_http_client()
 
     async def broadcast(
