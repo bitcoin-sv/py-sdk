@@ -4,8 +4,10 @@ from bsv.hd.bip32 import master_xprv_from_seed, bip32_derive_xprvs_from_mnemonic
 from bsv.hd.bip39 import seed_from_mnemonic
 from bsv.hd.bip44 import bip44_derive_xprvs_from_mnemonic
 
-BIP32_DERIVATION_PATH = "m/"
-BIP44_DERIVATION_PATH = "m/44'/236'/0'"
+from bsv.constants import BIP32_DERIVATION_PATH, BIP44_DERIVATION_PATH
+
+# BIP32_DERIVATION_PATH = "m/"
+# BIP44_DERIVATION_PATH = "m/44'/236'/0'"
 
 def test_key_derivation_consistency():
     # Test mnemonic phrase
