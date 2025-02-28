@@ -52,12 +52,18 @@ class Script:
             data = None
             if b'\x01' <= op <= b'\x4b':
                 data = reader.read_bytes(int.from_bytes(op, 'big'))
-            elif op == OpCode.OP_PUSHDATA1:
-                data = reader.read_bytes(reader.read_int8())
+            elif op == OpCode.OP_PUSHDATA1:  # 0x4c
+                length = reader.read_uint8()
+                if length is not None:
+                    data = reader.read_bytes(length)
             elif op == OpCode.OP_PUSHDATA2:
-                data = reader.read_bytes(reader.read_int16_le())
+                length = reader.read_uint16_le()
+                if length is not None:
+                    data = reader.read_bytes(length)
             elif op == OpCode.OP_PUSHDATA4:
-                data = reader.read_bytes(reader.read_int32_le())
+                length = reader.read_uint32_le()
+                if length is not None:
+                    data = reader.read_bytes(length)
             chunk.data = data
             self.chunks.append(chunk)
 
