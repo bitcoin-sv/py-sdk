@@ -34,6 +34,27 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
 
 ---
+## [1.0.2] - 2025-02-28
+
+### Added
+- BIP32_DERIVATION_PATH environment variable for customizing default derivation paths
+- Dedicated BIP32 derivation functions with clearer interface
+- BIP44-specific functions that build on the BIP32 foundation
+- Comprehensive tests for HD wallet key derivation consistency
+- Enhanced error messages for hardened key derivation attempts from xpub keys
+
+### Fixed
+- PUSHDATA opcode length parsing now uses unsigned integer reading methods (read_uint8, read_uint16_le, read_uint32_le) instead of signed integer methods to prevent incorrect chunk parsing with large data lengths
+- Proper handling of edge cases in Script parsing including length 0 and incomplete length specifications
+- Serialization/deserialization consistency for various PUSHDATA operations
+
+### Changed
+- Refined HD wallet key derivation interface while maintaining backward compatibility
+- Improved error messages for invalid derivation attempts
+- Marked legacy derivation functions as deprecated while maintaining compatibility
+
+
+---
 ## [1.0.1] - 2025-01-09
 
 ### Added

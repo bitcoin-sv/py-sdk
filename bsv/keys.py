@@ -289,6 +289,8 @@ class PrivateKey:
     def sign_text(self, text: str) -> Tuple[str, str]:
         """sign arbitrary text with bitcoin private key
         :returns: (p2pkh_address, stringified_recoverable_ecdsa_signature)
+        This function follows Bitcoin Signed Message Format.
+        For BRC-77, use signed_message.py instead.
         """
         message: bytes = text_digest(text)
         return self.address(), stringify_ecdsa_recoverable(self.sign_recoverable(message), self.compressed)
