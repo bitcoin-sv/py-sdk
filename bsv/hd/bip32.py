@@ -1,14 +1,16 @@
 import hmac
 from hashlib import sha512
-from typing import Union
+from typing import Union, List
 
+from .bip39 import seed_from_mnemonic
 from ..base58 import base58check_decode, base58check_encode
 from ..constants import BIP32_SEED_BYTE_LENGTH
 from ..constants import NETWORK_XPUB_PREFIX_DICT, NETWORK_XPRV_PREFIX_DICT
 from ..constants import Network, XKEY_BYTE_LENGTH, XKEY_PREFIX_LIST, PUBLIC_KEY_COMPRESSED_PREFIX_LIST
-from ..constants import XPUB_PREFIX_NETWORK_DICT, XPRV_PREFIX_NETWORK_DICT
+from ..constants import XPUB_PREFIX_NETWORK_DICT, XPRV_PREFIX_NETWORK_DICT, BIP32_DERIVATION_PATH
 from ..curve import curve, curve_add, curve_multiply
 from ..keys import PublicKey, PrivateKey
+
 
 
 class Xkey:
@@ -65,7 +67,11 @@ class Xpub(Xkey):
         elif isinstance(index, str):
             index = bytes.fromhex(index)
         assert len(index) == 4, 'index should be a 4 bytes integer'
-        assert index[0] < 0x80, "can't make hardened derivation from xpub"
+        assert index[0] < 0x80, ("can't make hardened derivation from xpub. "
+                                 "If you use hardened key, please set xpub with path from xpriv first. Example:\n"
+                                 "  master_xprv = master_xprv_from_seed(seed)\n"
+                                 "  account_xprv = ckd(master_xprv, \"m/44'/0'/0'\")\n"
+                                 "  account_xpub = account_xprv.xpub()")
 
         payload: bytes = self.prefix
         payload += (self.depth + 1).to_bytes(1, 'big')
@@ -181,6 +187,7 @@ def step_to_index(step: Union[str, int]) -> int:
 
 def ckd(xkey: Union[Xprv, Xpub], path: str) -> Union[Xprv, Xpub]:
     """
+    ckd = "Child Key Derivation"
     derive an extended key according to path like "m/44'/0'/1'/0/10" (absolute) or "./0/10" (relative)
     """
     steps = path.strip(' ').strip('/').split('/')
@@ -200,3 +207,92 @@ def ckd(xkey: Union[Xprv, Xpub], path: str) -> Union[Xprv, Xpub]:
 
 def master_xprv_from_seed(seed: Union[str, bytes], network: Network = Network.MAINNET) -> Xprv:
     return Xprv.from_seed(seed, network)
+
+
+def _derive_xkeys_from_xkey(xkey: Union[Xprv, Xpub],
+                           index_start: Union[str, int],
+                           index_end: Union[str, int],
+                           change: Union[str, int] = 0) -> List[Union[Xprv, Xpub]]:
+    """
+    this function is internal use only within bip32 module
+    Use bip32_derive_xkeys_from_xkey instead.
+    """
+    change_xkey = xkey.ckd(step_to_index(change))
+    return [change_xkey.ckd(i) for i in range(step_to_index(index_start), step_to_index(index_end))]
+
+
+def bip32_derive_xprv_from_mnemonic(mnemonic: str,
+                                    lang: str = 'en',
+                                    passphrase: str = '',
+                                    prefix: str = 'mnemonic',
+                                    path: str = BIP32_DERIVATION_PATH,
+                                    network: Network = Network.MAINNET) -> Xprv:
+    """
+    Derive the subtree root extended private key from mnemonic and path.
+    """
+    seed = seed_from_mnemonic(mnemonic, lang, passphrase, prefix)
+    master_xprv = Xprv.from_seed(seed, network)
+    return ckd(master_xprv, path)
+
+
+def bip32_derive_xprvs_from_mnemonic(mnemonic: str,
+                               index_start: Union[str, int],
+                               index_end: Union[str, int],
+                               lang: str = 'en',
+                               passphrase: str = '',
+                               prefix: str = 'mnemonic',
+                               path: str = BIP32_DERIVATION_PATH,
+                               change: Union[str, int] = 0,
+                               network: Network = Network.MAINNET) -> List[Xprv]:
+    """
+    Derive a range of extended keys from a nmemonic using BIP32 format
+    """
+    xprv = bip32_derive_xprv_from_mnemonic(mnemonic, lang, passphrase, prefix, path, network)
+    return _derive_xkeys_from_xkey(xprv, index_start, index_end, change)
+
+
+def bip32_derive_xkeys_from_xkey(xkey: Union[Xprv, Xpub],
+                                 index_start: Union[str, int],
+                                 index_end: Union[str, int],
+                                 path: str = BIP32_DERIVATION_PATH,
+                                 change: Union[str, int] = 0) -> List[Union[Xprv, Xpub]]:
+    """
+    Derive a range of extended keys from Xprv and Xpub keys using BIP32 path structure.
+
+    Args:
+        xkey: Parent extended key (Xprv or Xpub)
+        index_start: Starting index for derivation
+        index_end: Ending index for derivation (exclusive)
+        path: Base derivation path (default: BIP32_DERIVATION_PATH)
+        change: Change level (0 for receiving addresses, 1 for change addresses)
+
+    Returns:
+        List[Union[Xprv, Xpub]]: List of derived extended keys
+    """
+    # Convert index arguments to integers
+    start_idx = step_to_index(index_start) if isinstance(index_start, str) else index_start
+    end_idx = step_to_index(index_end) if isinstance(index_end, str) else index_end
+
+    # Validate indices
+    if start_idx < 0 or end_idx < 0 or start_idx >= end_idx:
+        raise ValueError("Invalid index range: start must be non-negative and less than end")
+
+    # Parse the base path and reconstruct with change value
+    base_path = path.rstrip('/')  # Remove trailing slashes if any
+    if base_path.startswith('m/'):
+        # For absolute paths
+        derived_path = f"{base_path}/{change}"
+    else:
+        # For relative paths
+        derived_path = f"./{change}"
+
+    # First derive to the change level
+    change_level = ckd(xkey, derived_path)
+
+    # Then derive the range of addresses
+    derived_keys = []
+    for i in range(start_idx, end_idx):
+        child_key = change_level.ckd(i)
+        derived_keys.append(child_key)
+
+    return derived_keys

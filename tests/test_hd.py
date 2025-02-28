@@ -192,3 +192,5 @@ def test_derive():
 
     with pytest.raises(AssertionError, match=r"can't make hardened derivation from xpub"):
         derive_xkeys_from_xkey(xpub, "0'", "1'")
+
+
