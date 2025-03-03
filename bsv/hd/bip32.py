@@ -12,7 +12,6 @@ from ..curve import curve, curve_add, curve_multiply
 from ..keys import PublicKey, PrivateKey
 
 
-
 class Xkey:
     """
     [  : 4] prefix
@@ -210,9 +209,9 @@ def master_xprv_from_seed(seed: Union[str, bytes], network: Network = Network.MA
 
 
 def _derive_xkeys_from_xkey(xkey: Union[Xprv, Xpub],
-                           index_start: Union[str, int],
-                           index_end: Union[str, int],
-                           change: Union[str, int] = 0) -> List[Union[Xprv, Xpub]]:
+                            index_start: Union[str, int],
+                            index_end: Union[str, int],
+                            change: Union[str, int] = 0) -> List[Union[Xprv, Xpub]]:
     """
     this function is internal use only within bip32 module
     Use bip32_derive_xkeys_from_xkey instead.
@@ -236,14 +235,14 @@ def bip32_derive_xprv_from_mnemonic(mnemonic: str,
 
 
 def bip32_derive_xprvs_from_mnemonic(mnemonic: str,
-                               index_start: Union[str, int],
-                               index_end: Union[str, int],
-                               lang: str = 'en',
-                               passphrase: str = '',
-                               prefix: str = 'mnemonic',
-                               path: str = BIP32_DERIVATION_PATH,
-                               change: Union[str, int] = 0,
-                               network: Network = Network.MAINNET) -> List[Xprv]:
+                                     index_start: Union[str, int],
+                                     index_end: Union[str, int],
+                                     lang: str = 'en',
+                                     passphrase: str = '',
+                                     prefix: str = 'mnemonic',
+                                     path: str = BIP32_DERIVATION_PATH,
+                                     change: Union[str, int] = 0,
+                                     network: Network = Network.MAINNET) -> List[Xprv]:
     """
     Derive a range of extended keys from a nmemonic using BIP32 format
     """

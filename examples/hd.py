@@ -1,5 +1,5 @@
 from bsv.hd import mnemonic_from_entropy, seed_from_mnemonic, master_xprv_from_seed
-from bsv.hd import derive_xprvs_from_mnemonic, derive_xkeys_from_xkey
+from bsv.hd import bip32_derive_xprvs_from_mnemonic, bip44_derive_xprvs_from_mnemonic, bip32_derive_xkeys_from_xkey
 from bsv.constants import BIP32_DERIVATION_PATH, BIP44_DERIVATION_PATH
 
 # You can set custom derivation paths in your environment variables as well
@@ -27,7 +27,7 @@ print("Master xpub:", master_xpub)
 print()
 
 # Derive keys from mnemonic using BIP32
-keys_from_mnemonic_by_bip32 = derive_xprvs_from_mnemonic(
+keys_from_mnemonic_by_bip32 = bip32_derive_xprvs_from_mnemonic(
     mnemonic, 0, 3, path=BIP32_DERIVATION_PATH, change=0
 )
 
@@ -38,7 +38,7 @@ print("Public key 2:", keys_from_mnemonic_by_bip32[2].public_key().hex())
 print()
 
 # Derive keys from xpub using BIP32
-keys_from_xpub_by_bip32 = derive_xkeys_from_xkey(
+keys_from_xpub_by_bip32 = bip32_derive_xkeys_from_xkey(
     master_xpub, 0, 3, change=0
 )
 
@@ -48,7 +48,7 @@ print("Public key 2:", keys_from_xpub_by_bip32[2].public_key().hex())
 print()
 
 # Derive keys from mnemonic using BIP44
-bip44_keys = derive_xprvs_from_mnemonic(
+bip44_keys = bip44_derive_xprvs_from_mnemonic(
     mnemonic, 0, 3, path=BIP44_DERIVATION_PATH, change=0
 )
 
