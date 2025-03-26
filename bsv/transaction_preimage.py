@@ -116,4 +116,42 @@ def tx_preimage(
         tx_version: int,
         tx_locktime: int,
 ) -> bytes:
-    return tx_preimages(inputs, outputs, tx_version, tx_locktime)[input_index]
+    """
+    Calculates and returns the preimage for a specific input index.
+    """
+    sighash = inputs[input_index].sighash
+
+    # hash previous outs
+    if not sighash & SIGHASH.ANYONECANPAY:
+        hash_prevouts = hash256(
+            b"".join(
+                bytes.fromhex(_in.source_txid)[::-1] + _in.source_output_index.to_bytes(4, "little")
+                for _in in inputs
+            )
+        )
+    else:
+        hash_prevouts = b"\x00" * 32
+
+    # hash sequence
+    if (
+            not sighash & SIGHASH.ANYONECANPAY
+            and sighash & 0x1F != SIGHASH.SINGLE
+            and sighash & 0x1F != SIGHASH.NONE
+    ):
+        hash_sequence = hash256(
+            b"".join(_in.sequence.to_bytes(4, "little") for _in in inputs)
+        )
+    else:
+        hash_sequence = b"\x00" * 32
+
+    # hash outputs
+    if sighash & 0x1F != SIGHASH.SINGLE and sighash & 0x1F != SIGHASH.NONE:
+        hash_outputs = hash256(
+            b"".join(tx_output.serialize() for tx_output in outputs)
+        )
+    elif sighash & 0x1F == SIGHASH.SINGLE and input_index < len(outputs):
+        hash_outputs = hash256(outputs[input_index].serialize())
+    else:
+        hash_outputs = b"\x00" * 32
+
+    return _preimage(inputs[input_index], tx_version, tx_locktime, hash_prevouts, hash_sequence, hash_outputs)

@@ -34,6 +34,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
 
 ---
+## [1.0.3] - 2025-03-26
+
+### Fixed
+Previously, the default fee rate was hardcoded to 10 satoshis per kilobyte. This update allows users to configure the default fee rate via the TRANSACTION_FEE_RATE variable in constants.py or through the environment file.
+
+### Added
+A test for the default fee rate has also been added.
+
+### Changed
+Optimized transaction preimage calculation by refactoring the tx_preimage function to directly compute the preimage for a specified input, avoiding unnecessary computation for all inputs
+Achieved a 3× performance improvement in scenarios with 250 inputs, based on benchmarking
+
+
 ## [1.0.2] - 2025-02-28
 
 ### Added
