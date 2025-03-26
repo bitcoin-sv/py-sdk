@@ -178,8 +178,8 @@ class Transaction:
         """
         
         if model_or_fee is None:
-            model_or_fee = SatoshisPerKilobyte(10)
-        
+            model_or_fee = SatoshisPerKilobyte(int(TRANSACTION_FEE_RATE))
+
         if isinstance(model_or_fee, int):
             fee = model_or_fee
         else:
