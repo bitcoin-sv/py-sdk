@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## Table of Contents
 
 - [Unreleased](#unreleased)
+- [1.0.4- 2025-04-28](#104---2025-04-28)
+- [1.0.3 - 2025-03-26](#103---2025-03-26)
 - [1.0.2 - 2025-02-28](#102---2025-02-28)
 - [1.0.1 - 2025-01-09](#101---2025-01-09)
 - [1.0.1 - 2025-01-09](#101---2025-01-09)
@@ -35,6 +37,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
+
+---
+## [1.0.4] - 2025-04-28
+
+### Fixed
+Remove debug print statement from MerklePath.trim() method and unnecessary import statement
+
+### Added
+add step-by-step guide for sending BSV & minting NFTs
+
+Adds a beginner-friendly tutorial that covers:
+* environment setup and dependency installation
+* key / address generation
+* sending BSV transactions
+* creating & broadcasting 1Sat Ordinals NFTs
+* explanation of inputs, outputs and key terms
+
+### Changed
+Enable regular hex format broadcasting when source transactions are unavailable
+Enhance the ARC broadcaster to dynamically select between EF and regular hex formats based on the availability of source transactions. This update addresses scenarios such as receiving raw hex via P2P payment destination Paymail capabilities.
+Additionally, unit tests have been added to cover this feature.
+
 
 ---
 ## [1.0.3] - 2025-03-26
