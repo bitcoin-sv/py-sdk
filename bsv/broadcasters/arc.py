@@ -59,14 +59,18 @@ class ARC(Broadcaster):
             self.headers = config.headers
 
     async def broadcast(
-        self, tx: 'Transaction'
+            self, tx: 'Transaction'
     ) -> Union[BroadcastResponse, BroadcastFailure]:
+        # Check if all inputs have source_transaction
+        has_all_source_txs = all(input.source_transaction is not None for input in tx.inputs)
         request_options = {
             "method": "POST",
             "headers": self.request_headers(),
-            "data": {"rawTx": tx.to_ef().hex()},
+            "data": {
+                "rawTx":
+                    tx.to_ef().hex() if has_all_source_txs else tx.hex()
+            }
         }
-
         try:
             response = await self.http_client.fetch(
                 f"{self.URL}/v1/tx", request_options
