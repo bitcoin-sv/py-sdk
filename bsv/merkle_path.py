@@ -1,4 +1,3 @@
-# from .chain_tracker import ChainTracker
 from typing import List, Optional, TypedDict
 
 from .chaintracker import ChainTracker
@@ -333,7 +332,7 @@ class MerklePath:
                     push_if_new(peer["offset"], drop_offsets)
 
         drop_offsets_from_level(drop_offsets, 0)
-        print('testing', self.path)
+        # print('testing', self.path)
         for h in range(1, len(self.path)):
             drop_offsets = computed_offsets
             computed_offsets = next_computed_offsets(computed_offsets)
