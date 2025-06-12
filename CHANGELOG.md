@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## Table of Contents
 
 - [Unreleased](#unreleased)
+- [1.0.5- 2025-05-30](#105---2025-05-30)
 - [1.0.4- 2025-04-28](#104---2025-04-28)
 - [1.0.3 - 2025-03-26](#103---2025-03-26)
 - [1.0.2 - 2025-02-28](#102---2025-02-28)
@@ -37,6 +38,27 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 - (Notify of any improvements related to security vulnerabilities or potential risks.)
+
+---
+## [1.0.5] - 2025-05-30
+
+### Added
+Introducing an implementation of Shamir's Secret Sharing scheme for securely splitting and recovering private keys. 
+
+The update includes the following:
+
+- KeyShares, Polynomial, and PointInFiniteField classes to manage key splitting logic
+
+- Integrity verification for share validation
+
+- Robust error handling during reconstruction
+
+- Comprehensive unit tests
+
+- Examples demonstrating the use and behavior of the implemented methods
+
+The implementation is designed to follow the functionality and interface of the existing TypeScript SDK. Compatibility has been verified.
+
 
 ---
 ## [1.0.4] - 2025-04-28
